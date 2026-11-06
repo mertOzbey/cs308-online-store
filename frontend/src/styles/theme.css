@@ -1,0 +1,169 @@
+/* Sulina Exclusive — brand tokens for layout components (SCRUM-65) */
+
+@import url("https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Source+Sans+3:wght@400;500;600&display=swap");
+
+:root {
+  /* Sulina cosmetics palette — blush / plum (burgundy + gold from brand kit) */
+  --color-plum: #3a2430;
+  --color-blush: #fbf6f8;
+  --color-burgundy: #77223d;
+  --color-burgundy-dark: #5c1a2f;
+  --color-rose: #c45b7a;
+  --color-gold: #b68d70;
+  --color-gold-hover: #9a755c;
+
+  --color-primary: var(--color-burgundy);
+  --color-primary-dark: var(--color-burgundy-dark);
+  --color-primary-light: #f7e9ee;
+  --color-accent: var(--color-rose);
+  --color-accent-hover: #a84868;
+  --color-bg: var(--color-blush);
+  --color-surface: #ffffff;
+  --color-text: var(--color-plum);
+  --color-text-muted: #7a6570;
+  --color-border: #eddfe6;
+  --color-navbar-bg: #fffafb;
+  --color-navbar-link: var(--color-plum);
+  --color-footer-bg: var(--color-plum);
+  --color-footer-text: #e8d6de;
+  --color-danger: #9b2c2c;
+  --color-badge: var(--color-burgundy);
+
+  /* Typography */
+  --font-heading: "Cormorant Garamond", Georgia, serif;
+  --font-body: "Source Sans 3", system-ui, sans-serif;
+  --font-size-base: 1rem;
+  --font-size-sm: 0.875rem;
+  --font-size-lg: 1.125rem;
+  --font-size-xl: 1.5rem;
+  --font-size-display: 2.25rem;
+  --line-height-base: 1.6;
+  --letter-spacing-tight: -0.01em;
+  --letter-spacing-wide: 0.08em;
+
+  /* Layout */
+  --layout-max-width: 1140px;
+  --layout-gutter: 1rem;
+  --navbar-height: 4.5rem;
+  --footer-padding-y: 3rem;
+  --section-padding-y: 3rem;
+  --radius-sm: 0.25rem;
+  --radius-md: 0.5rem;
+  --shadow-sm: 0 1px 2px rgba(58, 36, 48, 0.06);
+  --shadow-md: 0 10px 28px rgba(58, 36, 48, 0.08);
+  --transition-fast: 150ms ease;
+
+  /* Bootstrap theme bridge */
+  --bs-primary: var(--color-primary);
+  --bs-primary-rgb: 119, 34, 61;
+  --bs-body-font-family: var(--font-body);
+  --bs-body-color: var(--color-text);
+  --bs-body-bg: var(--color-bg);
+  --bs-border-color: var(--color-border);
+  --bs-link-color: var(--color-primary);
+  --bs-link-hover-color: var(--color-primary-dark);
+  --bs-border-radius: var(--radius-sm);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: var(--font-size-base);
+  line-height: var(--line-height-base);
+  color: var(--color-text);
+  background-color: var(--color-bg);
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(--font-heading);
+  letter-spacing: var(--letter-spacing-tight);
+  color: var(--color-text);
+  font-weight: 600;
+}
+
+a {
+  color: var(--color-primary);
+  text-decoration: none;
+  transition: color var(--transition-fast);
+}
+
+a:hover {
+  color: var(--color-primary-dark);
+}
+
+.app-shell {
+  display: flex;
+  min-height: 100vh;
+  flex-direction: column;
+}
+
+.app-main {
+  flex: 1 0 auto;
+  width: 100%;
+  max-width: var(--layout-max-width);
+  margin: 0 auto;
+  padding: var(--section-padding-y) var(--layout-gutter);
+}
+
+.btn-primary {
+  --bs-btn-bg: var(--color-primary);
+  --bs-btn-border-color: var(--color-primary);
+  --bs-btn-hover-bg: var(--color-primary-dark);
+  --bs-btn-hover-border-color: var(--color-primary-dark);
+  --bs-btn-active-bg: var(--color-primary-dark);
+  --bs-btn-active-border-color: var(--color-primary-dark);
+}
+
+.btn-accent {
+  --bs-btn-color: #fff;
+  --bs-btn-bg: var(--color-accent);
+  --bs-btn-border-color: var(--color-accent);
+  --bs-btn-hover-color: #fff;
+  --bs-btn-hover-bg: var(--color-accent-hover);
+  --bs-btn-hover-border-color: var(--color-accent-hover);
+  --bs-btn-active-color: #fff;
+  --bs-btn-active-bg: var(--color-accent-hover);
+  --bs-btn-active-border-color: var(--color-accent-hover);
+}
+
+.footer-link {
+  color: var(--color-footer-text);
+  text-decoration: none;
+  font-size: var(--font-size-sm);
+  transition: color var(--transition-fast);
+}
+
+.footer-link:hover {
+  color: #fff;
+}
+
+.footer-social {
+  color: var(--color-footer-text);
+  transition: color var(--transition-fast);
+}
+
+.footer-social:hover {
+  color: var(--color-gold);
+}
+
+.navbar .nav-link.active {
+  color: var(--color-burgundy) !important;
+}

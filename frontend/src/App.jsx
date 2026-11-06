@@ -2,7 +2,7 @@ import { Route, Routes } from 'react-router-dom'
 import Navbar from './components/Navbar'
 import Footer from './components/Footer'
 import Home from './pages/Home'
-import Products from './pages/Products'
+import ProductListPage from './pages/ProductListPage.jsx'
 import Placeholder from './pages/Placeholder'
 
 function App() {
@@ -12,7 +12,7 @@ function App() {
       <main className="app-main">
         <Routes>
           <Route path="/" element={<Home />} />
-          <Route path="/products" element={<Products />} />
+          <Route path="/products" element={<ProductListPage />} />
           <Route path="/cart" element={<Placeholder title="Cart" />} />
           <Route path="/login" element={<Placeholder title="Login" />} />
           <Route path="/about" element={<Placeholder title="About" />} />

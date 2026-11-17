@@ -3,7 +3,7 @@ import './ProductCard.css';
 
 // One product tile in the listing grid. Field names match the Prisma Product
 // model returned by GET /api/products (category is included by the backend).
-export default function ProductCard({ product, onAddToCart }) {
+export default function ProductCard({ product, onAddToCart, cartBusy = false }) {
   const stock = getStockStatus(product.stockQuantity);
 
   return (
@@ -31,7 +31,7 @@ export default function ProductCard({ product, onAddToCart }) {
         <button
           type="button"
           className="product-card__button"
-          disabled={!stock.canAddToCart}
+          disabled={!stock.canAddToCart || cartBusy}
           onClick={() => onAddToCart?.(product)}
         >
           {stock.canAddToCart ? 'Add to cart' : 'Sold out'}

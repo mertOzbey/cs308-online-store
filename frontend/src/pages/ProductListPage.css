@@ -1,5 +1,17 @@
 /* Page width and padding come from .app-main (styles/theme.css). */
 
+.product-list-page__filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.product-list-page__filters > div {
+  flex: 1 1 220px;
+}
+
 .product-list-page__header {
   display: flex;
   align-items: baseline;

@@ -1,8 +1,9 @@
 import { useState } from 'react'
-import { Link, NavLink } from 'react-router-dom'
+import { Link, NavLink, useNavigate } from 'react-router-dom'
 
 function Navbar({ cartItemCount = 0 }) {
   const [isOpen, setIsOpen] = useState(false)
+  const navigate = useNavigate()
 
   const closeMenu = () => setIsOpen(false)
 
@@ -84,11 +85,17 @@ function Navbar({ cartItemCount = 0 }) {
           <form
             className="d-flex my-3 my-lg-0 me-lg-3"
             role="search"
-            onSubmit={(event) => event.preventDefault()}
+            onSubmit={(event) => {
+              event.preventDefault()
+              const query = new FormData(event.currentTarget).get('q').trim()
+              navigate(query ? `/products?${new URLSearchParams({ q: query })}` : '/products')
+              closeMenu()
+            }}
           >
             <div className="input-group">
               <input
                 type="search"
+                name="q"
                 className="form-control"
                 placeholder="Search beauty products..."
                 aria-label="Search beauty products"

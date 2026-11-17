@@ -1,8 +1,13 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render as renderView, screen } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import '@testing-library/jest-dom/vitest';
 import ProductListPage from './ProductListPage.jsx';
+
+function render(view, path = '/products') {
+  return renderView(<MemoryRouter initialEntries={[path]}>{view}</MemoryRouter>);
+}
 
 const products = [
   {
@@ -30,6 +35,36 @@ afterEach(() => {
 });
 
 describe('ProductListPage', () => {
+  it('combines a trimmed case-insensitive search with the selected category and resets both', async () => {
+    mockFetchOnce(products);
+    render(<ProductListPage />);
+    await screen.findByText('Wireless Headphones');
+    fireEvent.change(screen.getByLabelText('Search products'), { target: { value: '  WH-100  ' } });
+    expect(screen.getAllByRole('article')).toHaveLength(1);
+    expect(screen.getByText('1 product')).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('Category'), { target: { value: '2' } });
+    expect(screen.queryAllByRole('article')).toHaveLength(0);
+    expect(screen.getByText('No products match your search and category.')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Clear filters' }));
+    expect(screen.getAllByRole('article')).toHaveLength(2);
+  });
+
+  it('restores filters from the URL and keeps sold-out matches visible', async () => {
+    mockFetchOnce(products);
+    render(<ProductListPage />, '/products?q=keyboard&category=2');
+    expect(await screen.findByRole('button', { name: 'Sold out' })).toBeDisabled();
+    expect(screen.queryByText('Wireless Headphones')).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Search products')).toHaveValue('keyboard');
+    expect(screen.getByLabelText('Category')).toHaveValue('2');
+  });
+
+  it('offers a reset for a category no longer present in the catalog', async () => {
+    mockFetchOnce(products);
+    render(<ProductListPage />, '/products?category=999');
+    fireEvent.click(await screen.findByRole('button', { name: 'Show all products' }));
+    expect(screen.getAllByRole('article')).toHaveLength(2);
+  });
+
   it('requests GET /api/products', async () => {
     mockFetchOnce(products);
     render(<ProductListPage />);

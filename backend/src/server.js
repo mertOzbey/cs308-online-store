@@ -1,29 +1,8 @@
-import express from 'express';
+import { createApp } from './app.js';
 import { prisma } from './db.js';
 
-const app = express();
+const app = createApp(prisma);
 const port = 3000;
-
-app.get('/', (req, res) => {
-  res.json({ message: 'CS308 backend is running' });
-});
-
-app.get('/api/products', async (req, res) => {
-  try {
-    const products = await prisma.product.findMany({
-      include: { category: true },
-      orderBy: { id: 'asc' },
-    });
-
-    res.json(products);
-  } catch {
-    console.error('Failed to retrieve products.');
-
-    res.status(500).json({
-      error: 'Products could not be retrieved.',
-    });
-  }
-});
 
 const server = app.listen(port, () => {
   console.log(`Server is running at http://localhost:${port}`);

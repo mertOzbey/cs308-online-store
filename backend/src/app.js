@@ -1,0 +1,55 @@
+import express from 'express';
+import { parseCartItems, validateCartStock } from './cartValidation.js';
+
+export function createApp(prisma) {
+  const app = express();
+  app.use(express.json({ limit: '16kb' }));
+
+  app.get('/', (req, res) => {
+    res.json({ message: 'CS308 backend is running' });
+  });
+
+  app.get('/api/products', async (req, res) => {
+    try {
+      const products = await prisma.product.findMany({
+        include: { category: true },
+        orderBy: { id: 'asc' },
+      });
+      res.json(products);
+    } catch {
+      console.error('Failed to retrieve products.');
+      res.status(500).json({ error: 'Products could not be retrieved.' });
+    }
+  });
+
+  app.post('/api/cart/validate', async (req, res) => {
+    let items;
+    try {
+      items = parseCartItems(req.body);
+    } catch (error) {
+      return res.status(400).json({ error: error.message });
+    }
+    const ids = items.map((item) => item.productId);
+    try {
+      const products = ids.length ? await prisma.product.findMany({
+        where: { id: { in: ids } },
+        select: { id: true, stockQuantity: true },
+      }) : [];
+      return res.json(validateCartStock(items, products));
+    } catch {
+      console.error('Failed to validate cart stock.');
+      return res.status(500).json({ error: 'Stock could not be checked. Please try again.' });
+    }
+  });
+
+  app.use((error, req, res, next) => {
+    if (error.type === 'entity.parse.failed') {
+      return res.status(400).json({ error: 'Request body must be valid JSON.' });
+    }
+    if (error.type === 'entity.too.large') {
+      return res.status(413).json({ error: 'Request body is too large.' });
+    }
+    return next(error);
+  });
+  return app;
+}

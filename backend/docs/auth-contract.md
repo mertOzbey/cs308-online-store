@@ -30,6 +30,28 @@ Profile authorization is server-side and always tied to the authenticated user.
 | B3 Password helpers | argon2 0.45.2; cookie 2.0.2 installed for B5 | B2 validation policy | None; consumed by Damla | No new migration |
 | B4 Persistent sessions | None; built-in node:crypto | B1/B2 | None; consumed by Damla's SCRUM-77 | create_auth_sessions migration |
 | B5 Cookies/middleware | cookie 2.0.2 already installed by B3 | B4 | Frontend uses configured origin/proxy; Damla consumes guards | No new migration |
+| B6 Role/ownership policies | None | B1 roles, B5 requireAuth | None; future protected routes consume policies | No new migration |
+
+## Authorization handoff
+
+Mount requireAuth first, followed by requireRoles(...roles) or
+requireOwner(getOwnerId) from src/authorization.js. A policy without an
+authenticated user returns 401; a denied role/owner returns 403. Unsupported
+role configuration fails during startup. Session resolution reads the current
+database role, so a role change is effective on the next request.
+
+Role boundaries:
+- CUSTOMER: customer operations on their own account/resources.
+- SALES_MANAGER: pricing, discounts, invoices/reports and refunds.
+- PRODUCT_MANAGER: product/category/stock, delivery and comment moderation.
+- SUPPORT_AGENT: support conversations and customer context authorized for them.
+
+requireOwner's callback must return a stored resource owner ID (positive integer)
+from a trusted database lookup; it must not return req.body.userId or an unverified
+URL ownerId. There is deliberately no blanket manager/support ownership bypass.
+A support conversation must separately authorize its assigned agent and linked
+customer. Missing/malformed owners deny access; lookup outages return generic 503.
+These policies do not implement or mark complete the future management panels.
 
 ## HTTP authentication handoff
 

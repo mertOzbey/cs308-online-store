@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  MAX_QUERY_LENGTH, ProductQueryError, buildProductWhere, parseCategoryId, parseProductQuery, parseSearchText,
+  MAX_QUERY_LENGTH, ProductQueryError, buildProductWhere, escapeLikePattern, parseCategoryId, parseProductQuery, parseSearchText,
 } from '../src/productQuery.js';
 
 test('no parameters keep the original catalog query', () => {
@@ -64,4 +64,12 @@ test('keyword and category are combined with AND', () => {
 
 test('unknown parameters are ignored', () => {
   assert.deepEqual(parseProductQuery({ page: '2', foo: 'bar' }), parseProductQuery({}));
+});
+
+test('% and _ in search text are matched literally, not as wildcards', () => {
+  assert.equal(escapeLikePattern('50%'), '50\\%');
+  assert.equal(escapeLikePattern('a_b'), 'a\\_b');
+  assert.equal(escapeLikePattern('back\\slash'), 'back\\\\slash');
+  assert.equal(escapeLikePattern('plain text'), 'plain text');
+  assert.equal(parseProductQuery({ q: '%' }).where.OR[0].name.contains, '\\%');
 });

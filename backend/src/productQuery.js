@@ -58,11 +58,18 @@ export function parseSortOrder(query) {
   return SORT_ORDERS[sort];
 }
 
+// Prisma turns `contains` into ILIKE, where % and _ are wildcards. Escape them so
+// a search for "50%" looks for that text instead of matching every product.
+export function escapeLikePattern(text) {
+  return text.replace(/[\\%_]/g, '\\$&');
+}
+
 export function buildProductWhere({ text = '', categoryId = null } = {}) {
   const where = {};
   if (text) {
+    const pattern = escapeLikePattern(text);
     where.OR = SEARCH_FIELDS.map((field) => ({
-      [field]: { contains: text, mode: 'insensitive' },
+      [field]: { contains: pattern, mode: 'insensitive' },
     }));
   }
   if (categoryId !== null) where.categoryId = categoryId;

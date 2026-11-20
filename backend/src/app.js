@@ -10,7 +10,7 @@ export function createApp(prisma) {
     res.json({ message: 'CS308 backend is running' });
   });
 
-  // Optional query parameters: q (keyword) and category (id). See productQuery.js.
+  // Optional query parameters: q (keyword), category (id) and sort. See productQuery.js.
   app.get('/api/products', async (req, res) => {
     let args;
     try {

@@ -26,6 +26,26 @@ Profile authorization is server-side and always tied to the authenticated user.
 | Delivery | New npm package | Previous delivery | Team dependency | Database |
 | --- | --- | --- | --- | --- |
 | B1 User model | None | None | None | PostgreSQL 17, Prisma 7.10.1; create_users migration |
+| B2 Validated repository | None | B1 | None; consumed by Damla's SCRUM-76/77 | B1 migration; no additional migration |
+
+## Registration handoff
+
+`validateRegistrationInput(body)` returns `{ profile, password }`. It accepts only
+the five registration fields; id/role/passwordHash and other keys are rejected.
+New passwords require at least 12 Unicode characters and at most 1024 UTF-8 bytes;
+their whitespace/Unicode content is preserved. Profile text is trimmed, email
+lowercased. Validation errors are `UserInputError` (400, INVALID_USER_INPUT).
+
+`createUserRepository(prisma)` exports:
+- `createCustomer(profile, passwordHash)`: persist only a separately supplied trusted
+  encoded hash; always CUSTOMER; return the safe projection.
+- `findCredentialsByEmail(email)`: internal-only `{ id, passwordHash }` or null.
+- `findSafeById(id)`: safe profile or null.
+
+The endpoint owner must validate the input, hash the password with the shared
+password helper, then call createCustomer. Never pass a request body as its hash
+argument. An atomic database unique violation maps to `EmailInUseError`
+(409, EMAIL_IN_USE); infrastructure errors propagate for a generic 5xx response.
 
 After pulling a schema change, run `npm ci`, `npm run db:generate`,
 `npm run db:validate` and `npm run db:deploy` from backend.

@@ -1,0 +1,18 @@
+/* SCRUM-73 wireframe styling. Extends the existing static docs/wireframes/styles.css */
+.auth-wireframe { display:grid; grid-template-columns: 0.9fr 1.1fr; gap: 0; margin: 24px auto; border: 1px solid var(--line); background: #fffdfc; min-height: 620px; }
+.auth-visual { background: #eed9de; padding: 24px; }
+.auth-visual-inner { border: 1px dashed #b88f9b; display:flex; flex-direction:column; justify-content:space-between; padding:24px; height:100%; min-height:570px; }
+.auth-visual-heading { font: 49px/1 Georgia, serif; max-width:340px; margin:18px 0; }
+.auth-visual small,.auth-visual-note { font-size:11px; letter-spacing:2px; }
+.auth-panel { padding:46px 54px; }
+.auth-panel .back { font-size:12px; }
+.auth-panel h1 { font:42px/1.1 Georgia, serif; margin:35px 0 12px; }
+.auth-intro { font-size:14px; color:#78666b; margin-bottom:30px; }
+.auth-panel label { display:block; font-size:13px; margin:16px 0 7px; }
+.auth-input-skeleton { display:flex; align-items:center; justify-content:space-between; border:1px solid #d5bdc4; padding:15px 13px; font-size:13px; color:#968288; background:white; }
+.auth-btn-skeleton { display:block; width:100%; border:0; text-align:center; margin-top:24px; background:#634a52; color:white; padding:16px; font-size:13px; letter-spacing:1px; }
+.auth-switch { font-size:13px; text-align:center; margin-top:24px; }
+.auth-switch a { text-decoration:underline; }
+.auth-annotation { font-size:11px; color:#977d85; margin-top:10px; }
+.auth-note { padding:14px 20px; border:1px dashed var(--line); font-size:12px; background:#fff; margin:20px auto 0; }
+@media (max-width: 750px) { .auth-wireframe { grid-template-columns:1fr; } .auth-visual { padding:12px; } .auth-visual-inner { min-height:160px; } .auth-visual-heading { font-size:34px; } .auth-panel { padding:28px 20px; } .auth-panel h1 { margin-top:24px; font-size:36px; } }

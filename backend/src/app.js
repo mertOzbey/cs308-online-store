@@ -28,6 +28,20 @@ export function createApp(prisma) {
     }
   });
 
+  // Every category, so the search UI can offer filters that are not on the current page.
+  app.get('/api/categories', async (req, res) => {
+    try {
+      const categories = await prisma.category.findMany({
+        select: { id: true, name: true },
+        orderBy: { name: 'asc' },
+      });
+      res.json(categories);
+    } catch {
+      console.error('Failed to retrieve categories.');
+      res.status(500).json({ error: 'Categories could not be retrieved.' });
+    }
+  });
+
   app.post('/api/cart/validate', async (req, res) => {
     let items;
     try {

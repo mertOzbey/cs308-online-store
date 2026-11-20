@@ -30,7 +30,7 @@ function supportedHash(hash) {
 }
 
 export async function verifyPassword(hash, password) {
-  if (!supportedHash(hash) || typeof password !== 'string' || !password ||
+  if (!supportedHash(hash) || typeof password !== 'string' || !password.isWellFormed() || !password ||
       Buffer.byteLength(password, 'utf8') > PASSWORD_MAX_BYTES) return false;
   try {
     return await argon2.verify(hash, password);

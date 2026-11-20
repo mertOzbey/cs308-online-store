@@ -37,12 +37,20 @@ export function useTestDatabase({ legacyCatalog = false } = {}) {
       for (const statement of sql.split(';').map((s) => s.trim()).filter(Boolean)) {
         await db.$executeRawUnsafe(statement);
       }
-      const category = await db.category.create({ data: { name: 'Existing catalog' } });
-      await db.product.create({ data: {
-        name: 'Existing product', model: 'Legacy', serialNumber: 'LEGACY-1',
-        description: 'Created before the user migration', stockQuantity: 3, price: '12.34',
-        warrantyStatus: 'One year', distributorInformation: 'Demo distributor', categoryId: category.id,
-      } });
+      // Seed the historical schema directly: today's generated client may already
+      // include columns from a teammate's later catalog migration.
+      const [category] = await db.$queryRawUnsafe(
+        `INSERT INTO "${schema}"."Category" ("name", "updatedAt") VALUES ($1, CURRENT_TIMESTAMP) RETURNING "id"`,
+        'Existing catalog',
+      );
+      await db.$executeRawUnsafe(
+        `INSERT INTO "${schema}"."Product"
+          ("name", "model", "serialNumber", "description", "stockQuantity", "price",
+           "warrantyStatus", "distributorInformation", "categoryId", "updatedAt")
+         VALUES ($1, $2, $3, $4, $5, $6::numeric, $7, $8, $9, CURRENT_TIMESTAMP)`,
+        'Existing product', 'Legacy', 'LEGACY-1', 'Created before the user migration',
+        3, '12.34', 'One year', 'Demo distributor', category.id,
+      );
       cli(['migrate', 'resolve', '--applied', initial]);
     }
     migrate();

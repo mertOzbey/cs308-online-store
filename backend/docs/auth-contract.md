@@ -10,6 +10,8 @@ Registration uses `name`, `taxId`, `email`, `homeAddress` and `password`.
 Persist only `passwordHash`, never the original password. Tax IDs are opaque
 text (including leading zeroes), not unique or restricted to one country's format.
 Limits: name 200 characters, taxId 100, email 254, homeAddress 1000, encoded hash 512.
+Email addresses are ASCII-only (SMTPUTF8/Unicode addresses are not supported);
+Unicode profile text and well-formed Unicode passwords remain supported.
 Email is trimmed/lowercased before persistence. The SQL canonical-email check and
 unique index enforce this even for simultaneous requests bypassing application code.
 
@@ -31,6 +33,84 @@ Profile authorization is server-side and always tied to the authenticated user.
 | B4 Persistent sessions | None; built-in node:crypto | B1/B2 | None; consumed by Damla's SCRUM-77 | create_auth_sessions migration |
 | B5 Cookies/middleware | cookie 2.0.2 already installed by B3 | B4 | Frontend uses configured origin/proxy; Damla consumes guards | No new migration |
 | B6 Role/ownership policies | None | B1 roles, B5 requireAuth | None; future protected routes consume policies | No new migration |
+| B7 Account endpoint/integration | None | B1-B6 | Damla's SCRUM-76/77 only for released register/login/logout flow | Apply B1/B4 and harden_user_text_constraints forward migration |
+
+The final forward migration makes email canonicalization independent of database
+locale and rejects fields containing only the full ECMAScript whitespace set.
+Use a UTF-8 PostgreSQL database. It validates existing records atomically; if
+invalid legacy data exists, stop and resolve that data deliberately instead of
+silently deleting/rewriting accounts. Old published migrations remain unchanged.
+Input validation rejects ill-formed UTF-16 strings rather than letting UTF-8
+encoding silently replace credential characters. It never normalizes valid passwords.
+
+## Account endpoint and integration status
+
+GET /api/auth/me is implemented by the real application. A valid session returns
+200 with { user: { id, name, email, homeAddress, role } }; absent/invalid/expired/
+revoked cookies return 401. Storage errors return generic 503. Responses are
+Cache-Control: no-store and Vary: Cookie. Another user's ID in the query string
+never switches the returned account. No taxId, passwordHash or token is exposed.
+
+The real application does **not** yet ship registration/login/logout endpoints:
+Damla owns SCRUM-76/77. authIntegration.test.js mounts clearly test-only
+/__test__/ routes to verify how the shared helpers compose. These routes do not
+exist in createApp. This verifies the contract, not Damla's unreleased HTTP code.
+
+### Damla's integration order
+
+1. Pull the feature branch and run npm ci, db:generate, db:validate, db:deploy.
+2. Import validateRegistrationInput/createUserRepository from users.js and
+   hashPassword/verifyPassword from passwords.js.
+3. Registration: requireTrustedOrigin, validate body, hash password, then
+   createCustomer(profile, hash). Map input/conflict errors to 400/409 and
+   infrastructure errors to a generic 503. Do not echo request passwords.
+4. Login: requireTrustedOrigin, look up canonical email credentials, verify
+   the password, then issueSession only for that verified user's ID and set the
+   session cookie. Use a generic invalid-credentials response; rate-limit the
+   login endpoint before deployment. Do not return the raw token in JSON.
+5. Logout: requireTrustedOrigin, read the validated cookie, revoke the
+   corresponding session and clear the cookie. Handle missing/revoked tokens
+   idempotently; malformed cookies must not become authenticated requests.
+6. Existing authenticated-session refresh may call rotateSession(token, userId);
+   a null result means the old session is unusable, not a new successful login.
+7. Preserve the guest cart in frontend state/storage across authentication.
+   Mount the real auth handlers in an additional /api/auth router; /me is
+   already provided here. Then verify the complete released browser flow.
+
+### Huseyin's integration order
+
+SCRUM-79/81 search and price sorting have no authentication dependency and remain
+public. Do not wait for login. If his popularity work changes Product/migrations,
+combine both schema additions without deleting User/AuthSession or salesCount.
+Preserve each migration; regenerate the client and apply the complete history.
+His backend app.js product/category routes must coexist with the /api/auth mount.
+The branches also have independent backend README additions; retain both.
+
+Compatibility was checked against scrum-79-81-search-sort at
+1506eefe931045f040f2017fabfe25f7c69e6635 in a separate combined source snapshot;
+his changes are not included in this branch. Retain both auth and product-query
+imports if app.js conflicts. The combined schema/migration history passed 122
+backend tests; the combined frontend passed 57 tests, production build and lint
+(one existing Footer render-time Date warning). The legacy-catalog test seeds the
+historical schema directly so it does not depend on later generated-client fields.
+
+### Requirements covered and remaining
+
+SCRUM-75 covers required user fields, roles, canonical/unique email, safe user
+repository, validation and migrations. SCRUM-78 covers Argon2id, persistent
+revocable sessions, secure cookies, CSRF origin guards, authentication, role and
+ownership guards, and a protected current-account endpoint.
+SCRUM-12 registration/login UI/API and SCRUM-15 profile UI are not complete just
+because this foundation exists. Future order/payment handlers must explicitly
+require authentication; future management routes must explicitly add role/
+resource policies. Invoice/card storage, live support, checkout, wishlist and
+refund implementations are outside this branch.
+
+The library/security references are the official node-argon2 documentation,
+jshttp/cookie API documentation, Node crypto documentation and Prisma 7 docs.
+No JWT, Redis, external identity, payment, email or other hosted service is needed
+for these two cards. No authentication secret environment variable is required
+for random database-backed session tokens.
 
 ## Authorization handoff
 

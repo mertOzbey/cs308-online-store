@@ -29,14 +29,18 @@ function requireKeys(value, allowed) {
   }
 }
 function requiredText(value, field, maximum) {
-  if (typeof value !== 'string' || !value.trim() || [...value.trim()].length > maximum ||
+  if (typeof value !== 'string' || !value.isWellFormed() || !value.trim() || [...value.trim()].length > maximum ||
       value.includes(String.fromCharCode(0))) {
     throw new UserInputError(`${field} must be nonempty text of at most ${maximum} characters.`);
   }
   return value.trim();
 }
 export function normalizeEmail(value) {
-  const email = requiredText(value, 'email', 254).toLowerCase();
+  const raw = requiredText(value, 'email', 254);
+  // This store does not support SMTPUTF8 addresses. Keep database and JavaScript
+  // canonicalization identical, independently of PostgreSQL's locale.
+  if (!/^[\x21-\x7e]+$/.test(raw)) throw new UserInputError('Use an ASCII email address.');
+  const email = raw.toLowerCase();
   if (!/^[^\s@]+@[^\s@]+[.][^\s@]+$/.test(email) || [...email].length > 254) {
     throw new UserInputError('A valid email address is required.');
   }
@@ -52,7 +56,7 @@ function validateProfile(profile) {
   };
 }
 export function validateNewPassword(password) {
-  if (typeof password !== 'string' || !password.trim() ||
+  if (typeof password !== 'string' || !password.isWellFormed() || !password.trim() ||
       [...password].length < 12 || Buffer.byteLength(password, 'utf8') > PASSWORD_MAX_BYTES) {
     throw new UserInputError('Password must contain at least 12 characters and at most 1024 UTF-8 bytes.');
   }

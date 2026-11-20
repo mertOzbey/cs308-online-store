@@ -76,3 +76,15 @@ test('database infrastructure failures are not mislabeled as duplicate email con
   const broken = createUserRepository({ user: { create: async () => { throw failure; } } });
   await assert.rejects(broken.createCustomer(profile(), 'trusted-test-hash'), (error) => error === failure);
 });
+
+test('email input uses an explicit ASCII address policy rather than locale-dependent Unicode folding', () => {
+  for (const email of ['É@example.test', 'é@example.test', String.fromCodePoint(0x212a) + '@example.test']) {
+    assert.throws(() => normalizeEmail(email), UserInputError);
+  }
+});
+
+test('ill-formed Unicode is rejected without silently replacing profile or password characters', () => {
+  const broken = String.fromCharCode(0xd800);
+  assert.throws(() => validateRegistrationInput(input({ name: 'Demo ' + broken })), UserInputError);
+  assert.throws(() => validateRegistrationInput(input({ password: 'demo-password-' + broken })), UserInputError);
+});

@@ -1,9 +1,12 @@
 import express from 'express';
 import { parseCartItems, validateCartStock } from './cartValidation.js';
+import { createAuthRouter } from './authRoutes.js';
+import { readAuthConfig } from './authConfig.js';
 
-export function createApp(prisma) {
+export function createApp(prisma, { authConfig = readAuthConfig() } = {}) {
   const app = express();
   app.use(express.json({ limit: '16kb' }));
+  app.use('/api/auth', createAuthRouter(prisma, authConfig));
 
   app.get('/', (req, res) => {
     res.json({ message: 'CS308 backend is running' });

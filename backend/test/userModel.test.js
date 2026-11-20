@@ -58,3 +58,19 @@ test('reapplying migrations preserves existing users and catalog records', async
   assert.equal(await db.user.count({ where: { id: user.id } }), 1);
   assert.equal(await db.product.count({ where: { serialNumber: 'LEGACY-1' } }), 1);
 });
+
+test('direct database email writes enforce the same ASCII canonical identity policy across locales', async () => {
+  for (const email of ['É@example.test', 'é@example.test', String.fromCharCode(160) + 'demo@example.test']) {
+    await assert.rejects(db.user.create({ data: data({ email }) }));
+  }
+  await db.user.create({ data: data({ email: 'canonical@example.test' }) });
+  await assert.rejects(db.user.create({ data: data({ email: 'CANONICAL@example.test' }) }));
+});
+
+test('database rejects fields containing only ECMAScript whitespace, including Unicode whitespace', async () => {
+  const whitespace = [String.fromCharCode(9, 10), String.fromCharCode(160),
+    String.fromCodePoint(0x1680, 0x2000, 0x2028, 0x202f, 0x3000, 0xfeff)];
+  for (const field of ['name', 'taxId', 'homeAddress', 'passwordHash']) {
+    for (const blank of whitespace) await assert.rejects(db.user.create({ data: data({ [field]: blank }) }));
+  }
+});

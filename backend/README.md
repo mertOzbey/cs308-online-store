@@ -1,5 +1,39 @@
 # Database setup (SCRUM-69 and SCRUM-70)
 
+## User accounts and authentication (SCRUM-75, SCRUM-78)
+
+This branch also adds the User/AuthSession migrations, validated customer
+repository, Argon2id password helpers, revocable database sessions, secure cookie
+and origin guards, role/ownership policies, and GET /api/auth/me.
+See [the authentication contract](docs/auth-contract.md) for exact helper
+signatures, field limits, error semantics, team dependencies and delivery order.
+Registration/login/logout HTTP handlers remain SCRUM-76/77 work.
+
+After pulling, run the local setup below with PostgreSQL 17 and separate
+development/test databases. New direct runtime dependencies are pinned:
+argon2 0.45.2 (Argon2id) and cookie 2.0.2 (cookie parsing/serialization).
+Both were verified on Node 24.18.0. Argon2 uses a native module; supported
+platforms ship prebuilt binaries. If your npm version requires install-script
+approval or your platform needs a native build, follow the official package
+instructions rather than substituting a weaker hash.
+
+Configure APP_ORIGIN and optional AUTH_ALLOWED_ORIGINS as exact frontend origins.
+Production must set NODE_ENV=production and an HTTPS APP_ORIGIN; cookies then
+always use Secure. SESSION_TTL_SECONDS defaults to 28800 (8 hours), and
+SESSION_COOKIE_NAME defaults to sulina_session. See .env.example.
+The normal development frontend proxy preserves the same-origin /api setup.
+There are no required JWT, Redis, third-party auth or email services.
+
+The backend suite includes real PostgreSQL schema/uniqueness/session/HTTP
+integration tests. TEST_DATABASE_URL must identify an isolated *_test database.
+Each new database test file owns and removes a randomly named schema; it never
+falls back to the development database. The legacy-catalog upgrade test installs
+the original catalog migration before applying the account/session migrations
+and verifies the original products survive.
+
+Anonymous GET /api/products and POST /api/cart/validate remain public.
+Do not apply authentication to every route while merging the catalog work.
+
 This contribution configures PostgreSQL and Prisma, and defines the Product and
 Category models. Express setup (SCRUM-68) and GET Products (SCRUM-71) belong to
 other team members.

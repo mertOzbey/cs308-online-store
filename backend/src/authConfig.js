@@ -10,7 +10,7 @@ export function validateAuthConfig(config) {
   const origins = config.allowedOrigins.map((value) => {
     let url;
     try { url = new URL(value); } catch { throw new TypeError('Configure explicit application origins.'); }
-    if (typeof value !== 'string' || url.origin !== value || url.username || url.password ||
+    if (typeof value !== 'string' || url.origin !== value || url.username || url.password || url.hostname.includes('*') ||
         !['https:', 'http:'].includes(url.protocol) || (config.secure && url.protocol !== 'https:')) {
       throw new TypeError('Configure canonical HTTP(S) origins; production requires HTTPS.');
     }

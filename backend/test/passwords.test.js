@@ -35,3 +35,13 @@ test('verification fails safely for malformed hashes and invalid password inputs
     assert.equal(await verifyPassword(hash, password), false);
   }
 });
+
+test('distinct unpaired surrogates cannot collapse into the same UTF-8 credential', async () => {
+  const broken = 'demo-password-' + String.fromCharCode(0xd800);
+  await assert.rejects(hashPassword(broken), UserInputError);
+  const validReplacement = 'demo-password-' + String.fromCodePoint(0xfffd);
+  const hash = await hashPassword(validReplacement);
+  assert.equal(await verifyPassword(hash, broken), false);
+  assert.equal(await verifyPassword(hash, 'demo-password-' + String.fromCharCode(0xd801)), false);
+  assert.equal(await verifyPassword(hash, validReplacement), true);
+});

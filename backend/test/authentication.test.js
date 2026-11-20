@@ -62,7 +62,9 @@ test('invalid production config, origins, cookie names and lifetimes fail at set
     { APP_ORIGIN: '*' }, { APP_ORIGIN: 'https://user:secret@store.example.test' },
     { APP_ORIGIN: 'https://store.example.test/path' }, { APP_ORIGIN: 'null' },
     { SESSION_COOKIE_NAME: 'bad;cookie' }, { SESSION_TTL_SECONDS: '60junk' },
-    { SESSION_TTL_SECONDS: '0' }, { SESSION_TTL_SECONDS: '' }, { AUTH_ALLOWED_ORIGINS: '*' }]) {
+    { SESSION_TTL_SECONDS: '0' }, { SESSION_TTL_SECONDS: '' }, { AUTH_ALLOWED_ORIGINS: '*' },
+    { NODE_ENV: 'production', APP_ORIGIN: 'https://*.example.test' },
+    { AUTH_ALLOWED_ORIGINS: 'https://*.example.test' }]) {
     assert.throws(() => readAuthConfig(env));
   }
 });

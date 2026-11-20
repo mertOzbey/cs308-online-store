@@ -29,6 +29,36 @@ Profile authorization is server-side and always tied to the authenticated user.
 | B2 Validated repository | None | B1 | None; consumed by Damla's SCRUM-76/77 | B1 migration; no additional migration |
 | B3 Password helpers | argon2 0.45.2; cookie 2.0.2 installed for B5 | B2 validation policy | None; consumed by Damla | No new migration |
 | B4 Persistent sessions | None; built-in node:crypto | B1/B2 | None; consumed by Damla's SCRUM-77 | create_auth_sessions migration |
+| B5 Cookies/middleware | cookie 2.0.2 already installed by B3 | B4 | Frontend uses configured origin/proxy; Damla consumes guards | No new migration |
+
+## HTTP authentication handoff
+
+readAuthConfig(process.env) from src/authConfig.js validates configuration at
+startup. APP_ORIGIN is mandatory HTTPS in production. Development defaults to
+http://localhost:5173. AUTH_ALLOWED_ORIGINS optionally lists additional exact
+canonical origins. Paths, credentials, wildcard origins and insecure production
+origins are rejected. SESSION_TTL_SECONDS is 60..2592000 (default 28800).
+SESSION_COOKIE_NAME defaults to sulina_session.
+
+createAuthentication(sessionService, config) from src/authentication.js exports:
+- requireAuth: reject absent/invalid/expired/revoked sessions with 401.
+- optionalAuth: absent cookie means anonymous; supplied invalid cookie means 401.
+- requireTrustedOrigin: require an exact trusted Origin for unsafe methods.
+- readSessionToken(req): token or null; malformed/duplicate cookies raise AuthCookieError (401).
+- setSessionCookie(res, issuedSession) and clearSessionCookie(res).
+
+Cookies are host-only, HttpOnly, SameSite=Lax and Path=/; production always adds
+Secure. Set/clear helpers use the same scope. Session cookies expire with the
+underlying session; raw tokens are not sent in JSON. Auth responses are no-store.
+Storage outages return generic 503, never an authenticated or silently anonymous user.
+
+requireAuth checks Origin on unsafe authenticated requests. For public auth
+POSTs (registration/login), Damla must explicitly mount requireTrustedOrigin
+before the handler, since callers do not have a session yet. Missing/null/
+untrusted Origin is rejected with 403, including CLI calls without an Origin.
+SameSite cookies alone are not the CSRF protection. Do not configure credentialed
+wildcard CORS, infer trusted origins from the Host header or put tokens in URLs.
+These guards are route-scoped; do not require login for catalog/search/guest cart.
 
 ## Session handoff
 

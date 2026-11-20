@@ -1,24 +1,36 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import ProductCard from '../components/ProductCard.jsx';
-import { fetchProducts } from '../api/products.js';
+import { SORT_OPTIONS, fetchCategories, fetchProducts, isSortOption } from '../api/products.js';
+import { useDebouncedValue } from '../hooks/useDebouncedValue.js';
 import './ProductListPage.css';
+
+const SEARCH_DELAY_MS = 300;
+const isCategoryId = (value) => /^[1-9]\d*$/.test(value);
 
 export default function ProductListPage({ onAddToCart, cartBusy = false, cartMessage = '' }) {
   const [searchParams, setSearchParams] = useSearchParams();
   const query = searchParams.get('q') ?? '';
   const categoryId = searchParams.get('category') ?? '';
+  const sortParam = searchParams.get('sort') ?? '';
   const [products, setProducts] = useState([]);
   const [status, setStatus] = useState('loading'); // 'loading' | 'success' | 'error'
+  const [loadedRequest, setLoadedRequest] = useState(null);
   const [reloadKey, setReloadKey] = useState(0);
-  const categories = [...new Map(products.filter((product) => product.category)
-    .map((product) => [String(product.category.id), product.category])).values()]
-    .sort((a, b) => a.name.localeCompare(b.name));
-  const normalizedQuery = query.trim().toLocaleLowerCase();
-  const visibleProducts = products.filter((product) =>
-    (!categoryId || String(product.category?.id) === categoryId) &&
-    (!normalizedQuery || [product.name, product.model, product.description]
-      .some((value) => value?.toLocaleLowerCase().includes(normalizedQuery))));
+  const [categories, setCategories] = useState([]);
+  const [categoriesLoaded, setCategoriesLoaded] = useState(false);
+
+  // Search and filtering run on the server (SCRUM-79). Typing is debounced;
+  // an id that the backend would reject is not sent.
+  const searchText = useDebouncedValue(query.trim(), SEARCH_DELAY_MS);
+  const categoryFilter = isCategoryId(categoryId) ? categoryId : '';
+  // An unknown sort in the URL falls back to the default order (SCRUM-81).
+  const sort = isSortOption(sortParam) ? sortParam : '';
+  const filtersActive = Boolean(query.trim() || categoryId);
+  const selectedCategoryKnown = categories.some((category) => String(category.id) === categoryId);
+  // While new results load, the previous ones stay on screen marked as busy.
+  const request = `${searchText}|${categoryFilter}|${sort}|${reloadKey}`;
+  const refreshing = loadedRequest !== request;
 
   function updateFilter(key, value) {
     setSearchParams((previous) => {
@@ -44,22 +56,39 @@ export default function ProductListPage({ onAddToCart, cartBusy = false, cartMes
   }
 
   useEffect(() => {
-    // AbortController cancels the request if the page unmounts before it ends.
+    // AbortController cancels the request if the filters change or the page
+    // unmounts first, so an older, slower response can never replace a newer one.
     const controller = new AbortController();
 
-    fetchProducts({ signal: controller.signal })
+    fetchProducts({ q: searchText, category: categoryFilter, sort, signal: controller.signal })
       .then((data) => {
         setProducts(data);
         setStatus('success');
+        setLoadedRequest(request);
       })
       .catch((error) => {
         if (error.name === 'AbortError') return;
         console.error(error);
         setStatus('error');
+        setLoadedRequest(request);
       });
 
     return () => controller.abort();
-  }, [reloadKey]);
+  }, [searchText, categoryFilter, sort, reloadKey, request]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    fetchCategories({ signal: controller.signal })
+      .then((data) => {
+        setCategories(data);
+        setCategoriesLoaded(true);
+      })
+      .catch((error) => {
+        // The page still works without the dropdown entries.
+        if (error.name !== 'AbortError') console.error(error);
+      });
+    return () => controller.abort();
+  }, []);
 
   return (
     <section className="product-list-page">
@@ -67,7 +96,7 @@ export default function ProductListPage({ onAddToCart, cartBusy = false, cartMes
         <h1>All products</h1>
         {status === 'success' && (
           <p className="product-list-page__count" role="status">
-            {visibleProducts.length} {visibleProducts.length === 1 ? 'product' : 'products'}
+            {products.length} {products.length === 1 ? 'product' : 'products'}
           </p>
         )}
       </header>
@@ -84,10 +113,17 @@ export default function ProductListPage({ onAddToCart, cartBusy = false, cartMes
           <select id="product-category" className="form-select" value={categoryId}
             onChange={(event) => updateFilter('category', event.target.value)}>
             <option value="">All categories</option>
-            {categoryId && !categories.some((category) => String(category.id) === categoryId) && (
-              <option value={categoryId}>Unavailable category</option>
+            {categoryId && !selectedCategoryKnown && (
+              <option value={categoryId}>{categoriesLoaded ? 'Unavailable category' : 'Selected category'}</option>
             )}
             {categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}
+          </select>
+        </div>
+        <div>
+          <label htmlFor="product-sort" className="form-label">Sort by</label>
+          <select id="product-sort" className="form-select" value={sort}
+            onChange={(event) => updateFilter('sort', event.target.value)}>
+            {SORT_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
           </select>
         </div>
         <button type="button" className="btn btn-outline-secondary" onClick={clearFilters}
@@ -112,22 +148,22 @@ export default function ProductListPage({ onAddToCart, cartBusy = false, cartMes
         </div>
       )}
 
-      {status === 'success' && products.length === 0 && (
+      {status === 'success' && products.length === 0 && !filtersActive && (
         <div className="product-list-page__message">
           <p>No products yet.</p>
         </div>
       )}
 
-      {status === 'success' && products.length > 0 && visibleProducts.length === 0 && (
+      {status === 'success' && products.length === 0 && filtersActive && (
         <div className="product-list-page__message">
           <p>No products match your search and category.</p>
           <button type="button" className="btn btn-primary" onClick={clearFilters}>Show all products</button>
         </div>
       )}
 
-      {status === 'success' && visibleProducts.length > 0 && (
-        <div className="product-grid">
-          {visibleProducts.map((product) => (
+      {status === 'success' && products.length > 0 && (
+        <div className="product-grid" aria-busy={refreshing}>
+          {products.map((product) => (
             <ProductCard key={product.id} product={product} onAddToCart={onAddToCart} cartBusy={cartBusy} />
           ))}
         </div>

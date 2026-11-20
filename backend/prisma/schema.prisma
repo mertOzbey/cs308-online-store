@@ -25,6 +25,8 @@ model Product {
   serialNumber           String   @unique
   description            String
   stockQuantity          Int      @default(0)
+  /// Units sold so far; GET /api/products?sort=popularity orders by this (SCRUM-81).
+  salesCount             Int      @default(0)
   price                  Decimal  @db.Decimal(12, 2)
   warrantyStatus         String
   distributorInformation String

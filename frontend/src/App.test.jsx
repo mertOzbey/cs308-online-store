@@ -10,10 +10,18 @@ const product = { id: 1, name: 'Lipstick', model: 'L1', description: 'Red lipsti
 const stockReply = (valid, reason = null, availableQuantity = 5) => ({ ok: true,
   json: async () => ({ valid, items: [{ productId: 1, reason, availableQuantity }] }) });
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
+// Catalog requests are answered by URL; the remaining calls (cart stock checks) take `cartReplies` in order.
+function stubApi(...cartReplies) {
+  const last = cartReplies.at(-1);
+  vi.stubGlobal('fetch', vi.fn(async (url) => {
+    if (url.startsWith('/api/categories')) return { ok: true, json: async () => [product.category] };
+    if (url.startsWith('/api/products')) return { ok: true, json: async () => [product] };
+    return cartReplies.length > 1 ? cartReplies.shift() : last;
+  }));
+}
 
 it('submits navbar search and carries an approved item into the cart, updates and removes it', async () => {
-  vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce({ ok: true, json: async () => [product] })
-    .mockResolvedValue(stockReply(true)));
+  stubApi(stockReply(true));
   render(<MemoryRouter><App /></MemoryRouter>);
   fireEvent.change(screen.getByRole('searchbox', { name: 'Search beauty products' }), { target: { value: 'Lipstick' } });
   fireEvent.click(screen.getByRole('button', { name: 'Submit search' }));
@@ -32,9 +40,7 @@ it('submits navbar search and carries an approved item into the cart, updates an
 });
 
 it('restores the accepted quantity after the server rejects an update', async () => {
-  vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce({ ok: true, json: async () => [product] })
-    .mockResolvedValueOnce(stockReply(true)).mockResolvedValueOnce(stockReply(false, 'INSUFFICIENT_STOCK', 2))
-    .mockResolvedValue(stockReply(true)));
+  stubApi(stockReply(true), stockReply(false, 'INSUFFICIENT_STOCK', 2), stockReply(true));
   render(<MemoryRouter initialEntries={['/products']}><App /></MemoryRouter>);
   fireEvent.click(await screen.findByRole('button', { name: 'Add to cart' }));
   fireEvent.click(await screen.findByRole('link', { name: 'Cart with 1 items' }));
@@ -49,8 +55,7 @@ it('restores the accepted quantity after the server rejects an update', async ()
 });
 
 it('shows a changed-stock warning in the cart and preserves the accepted item count', async () => {
-  vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce({ ok: true, json: async () => [product] })
-    .mockResolvedValueOnce(stockReply(true)).mockResolvedValue(stockReply(false, 'INSUFFICIENT_STOCK', 1)));
+  stubApi(stockReply(true), stockReply(false, 'INSUFFICIENT_STOCK', 1));
   render(<MemoryRouter initialEntries={['/products']}><App /></MemoryRouter>);
   fireEvent.click(await screen.findByRole('button', { name: 'Add to cart' }));
   fireEvent.click(await screen.findByRole('link', { name: 'Cart with 1 items' }));

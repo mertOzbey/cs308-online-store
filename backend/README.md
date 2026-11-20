@@ -143,6 +143,35 @@ Review these business assumptions with the team before merging:
 - The team has not supplied a detailed acceptance description on the two Jira
   cards. These choices implement the course minimum and remain reviewable.
 
+## Product search and sorting API (SCRUM-79, SCRUM-81)
+
+`GET /api/products` accepts optional query parameters. Without any of them it
+returns the whole catalog ordered by `id`, exactly as before.
+
+| Parameter | Example | Meaning |
+| --- | --- | --- |
+| `q` | `?q=lipstick` | Keyword, case-insensitive, matched against `name`, `model` and `description`. Trimmed; at most 100 characters. `%` and `_` are matched literally. |
+| `category` | `?category=3` | Only products in that category id. |
+| `sort` | `?sort=price_asc` | `price_asc`, `price_desc` or `popularity` (best sellers first). Ties are broken by `id`. |
+
+Parameters combine: `/api/products?q=serum&category=2&sort=price_desc`.
+Invalid values (non-numeric category, unknown sort, a repeated parameter, a
+search over 100 characters) answer `400` with `{ "error": "..." }` instead of
+returning the full catalog.
+
+`GET /api/categories` returns `[{ id, name }]` sorted by name, so the frontend can
+list every category in its filter.
+
+Popularity uses the new `Product.salesCount` column (migration
+`20261120120000_add_product_sales_count`, default 0, nonnegative). Nothing
+increments it yet: whoever implements order placement should add the ordered
+quantity to `salesCount` in the same transaction that decreases `stockQuantity`.
+Until then all products tie and `popularity` falls back to `id` order.
+
+The parsing and validation live in `src/productQuery.js`. The HTTP tests in
+`test/products.test.js`, `test/productSort.test.js` and `test/categories.test.js`
+use a fake Prisma client, so they do not need PostgreSQL.
+
 ## Tests
 
 `npm test` requires `TEST_DATABASE_URL` pointing at a dedicated database whose

@@ -27,6 +27,19 @@ Profile authorization is server-side and always tied to the authenticated user.
 | --- | --- | --- | --- | --- |
 | B1 User model | None | None | None | PostgreSQL 17, Prisma 7.10.1; create_users migration |
 | B2 Validated repository | None | B1 | None; consumed by Damla's SCRUM-76/77 | B1 migration; no additional migration |
+| B3 Password helpers | argon2 0.45.2; cookie 2.0.2 installed for B5 | B2 validation policy | None; consumed by Damla | No new migration |
+
+## Password handoff
+
+Import hashPassword(password) and verifyPassword(hash, password) from
+src/passwords.js. Hashing uses Argon2id with the library's security defaults and
+a fresh random salt per password. Validation is shared with registration.
+Verification returns false for a wrong password, malformed encoded hash or
+invalid input, without logging credentials. Hashing infrastructure errors are
+PasswordHashError (503); endpoints must return a generic service error.
+The accepted PHC format is this application's Argon2id v19, 16-byte salt,
+32-byte hash, with bounded cost parameters; other legacy formats require an
+explicit migration rather than silently weakening verification.
 
 ## Registration handoff
 

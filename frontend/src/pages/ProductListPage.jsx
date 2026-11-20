@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import ProductCard from '../components/ProductCard.jsx';
-import { fetchCategories, fetchProducts } from '../api/products.js';
+import { SORT_OPTIONS, fetchCategories, fetchProducts, isSortOption } from '../api/products.js';
 import { useDebouncedValue } from '../hooks/useDebouncedValue.js';
 import './ProductListPage.css';
 
@@ -12,6 +12,7 @@ export default function ProductListPage({ onAddToCart, cartBusy = false, cartMes
   const [searchParams, setSearchParams] = useSearchParams();
   const query = searchParams.get('q') ?? '';
   const categoryId = searchParams.get('category') ?? '';
+  const sortParam = searchParams.get('sort') ?? '';
   const [products, setProducts] = useState([]);
   const [status, setStatus] = useState('loading'); // 'loading' | 'success' | 'error'
   const [loadedRequest, setLoadedRequest] = useState(null);
@@ -23,10 +24,12 @@ export default function ProductListPage({ onAddToCart, cartBusy = false, cartMes
   // an id that the backend would reject is not sent.
   const searchText = useDebouncedValue(query.trim(), SEARCH_DELAY_MS);
   const categoryFilter = isCategoryId(categoryId) ? categoryId : '';
+  // An unknown sort in the URL falls back to the default order (SCRUM-81).
+  const sort = isSortOption(sortParam) ? sortParam : '';
   const filtersActive = Boolean(query.trim() || categoryId);
   const selectedCategoryKnown = categories.some((category) => String(category.id) === categoryId);
   // While new results load, the previous ones stay on screen marked as busy.
-  const request = `${searchText}|${categoryFilter}|${reloadKey}`;
+  const request = `${searchText}|${categoryFilter}|${sort}|${reloadKey}`;
   const refreshing = loadedRequest !== request;
 
   function updateFilter(key, value) {
@@ -57,7 +60,7 @@ export default function ProductListPage({ onAddToCart, cartBusy = false, cartMes
     // unmounts first, so an older, slower response can never replace a newer one.
     const controller = new AbortController();
 
-    fetchProducts({ q: searchText, category: categoryFilter, signal: controller.signal })
+    fetchProducts({ q: searchText, category: categoryFilter, sort, signal: controller.signal })
       .then((data) => {
         setProducts(data);
         setStatus('success');
@@ -71,7 +74,7 @@ export default function ProductListPage({ onAddToCart, cartBusy = false, cartMes
       });
 
     return () => controller.abort();
-  }, [searchText, categoryFilter, reloadKey, request]);
+  }, [searchText, categoryFilter, sort, reloadKey, request]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -114,6 +117,13 @@ export default function ProductListPage({ onAddToCart, cartBusy = false, cartMes
               <option value={categoryId}>{categoriesLoaded ? 'Unavailable category' : 'Selected category'}</option>
             )}
             {categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}
+          </select>
+        </div>
+        <div>
+          <label htmlFor="product-sort" className="form-label">Sort by</label>
+          <select id="product-sort" className="form-select" value={sort}
+            onChange={(event) => updateFilter('sort', event.target.value)}>
+            {SORT_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
           </select>
         </div>
         <button type="button" className="btn btn-outline-secondary" onClick={clearFilters}

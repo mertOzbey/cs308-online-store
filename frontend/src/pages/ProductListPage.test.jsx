@@ -12,16 +12,26 @@ function render(view, path = '/products') {
 const products = [
   {
     id: 1, name: 'Wireless Headphones', model: 'WH-100', description: 'Headphones',
-    stockQuantity: 12, price: '1299.50', category: { id: 1, name: 'Audio' },
+    stockQuantity: 12, price: '1299.50', salesCount: 40, category: { id: 1, name: 'Audio' },
   },
   {
     id: 2, name: 'Mechanical Keyboard', model: 'MK-87', description: 'Keyboard',
-    stockQuantity: 0, price: '2499.00', category: { id: 2, name: 'Peripherals' },
+    stockQuantity: 0, price: '2499.00', salesCount: 15, category: { id: 2, name: 'Peripherals' },
+  },
+  {
+    id: 3, name: 'USB Microphone', model: 'MIC-1', description: 'Microphone',
+    stockQuantity: 4, price: '899.90', salesCount: 90, category: { id: 1, name: 'Audio' },
   },
 ];
+const byPrice = (a, b) => Number(a.price) - Number(b.price) || a.id - b.id;
+const SORTS = {
+  price_asc: byPrice,
+  price_desc: (a, b) => Number(b.price) - Number(a.price) || a.id - b.id,
+  popularity: (a, b) => b.salesCount - a.salesCount || a.id - b.id,
+};
 const categories = [{ id: 1, name: 'Audio' }, { id: 2, name: 'Peripherals' }];
 
-// Fake backend: filters like GET /api/products does (SCRUM-79) and records each URL.
+// Fake backend: filters and sorts like GET /api/products does (SCRUM-79, SCRUM-81).
 // A test can queue one-off replies for the products endpoint in `productReplies`.
 let catalog;
 let productReplies;
@@ -34,11 +44,14 @@ function fakeServer(url) {
   if (productReplies.length) return productReplies.shift()();
   const q = (searchParams.get('q') ?? '').toLowerCase();
   const category = searchParams.get('category');
-  return reply(catalog.filter((product) =>
+  const matches = catalog.filter((product) =>
     (!category || String(product.category.id) === category) &&
-    (!q || [product.name, product.model, product.description].some((text) => text.toLowerCase().includes(q)))));
+    (!q || [product.name, product.model, product.description].some((text) => text.toLowerCase().includes(q))));
+  const sort = searchParams.get('sort');
+  return reply(sort ? [...matches].sort(SORTS[sort]) : matches);
 }
 
+const cardNames = () => screen.getAllByRole('article').map((card) => card.querySelector('h2, h3').textContent);
 const productCalls = () => globalThis.fetch.mock.calls.map(([url]) => url).filter((url) => url.startsWith('/api/products'));
 
 beforeEach(() => {
@@ -65,7 +78,7 @@ describe('ProductListPage', () => {
     expect(await screen.findByText('No products match your search and category.')).toBeInTheDocument();
     expect(screen.queryAllByRole('article')).toHaveLength(0);
     fireEvent.click(screen.getByRole('button', { name: 'Clear filters' }));
-    await waitFor(() => expect(screen.getAllByRole('article')).toHaveLength(2));
+    await waitFor(() => expect(screen.getAllByRole('article')).toHaveLength(3));
   });
 
   it('sends the search text and category to GET /api/products', async () => {
@@ -109,7 +122,7 @@ describe('ProductListPage', () => {
     render(<ProductListPage />, '/products?category=999');
     expect(await screen.findByRole('option', { name: 'Unavailable category' })).toBeInTheDocument();
     fireEvent.click(await screen.findByRole('button', { name: 'Show all products' }));
-    await waitFor(() => expect(screen.getAllByRole('article')).toHaveLength(2));
+    await waitFor(() => expect(screen.getAllByRole('article')).toHaveLength(3));
   });
 
   it('does not send a malformed category id to the backend', async () => {
@@ -137,8 +150,8 @@ describe('ProductListPage', () => {
 
     expect(await screen.findByText('Wireless Headphones')).toBeInTheDocument();
     expect(screen.getByText('Mechanical Keyboard')).toBeInTheDocument();
-    expect(screen.getByText('2 products')).toBeInTheDocument();
-    expect(screen.getAllByRole('article')).toHaveLength(2);
+    expect(screen.getByText('3 products')).toBeInTheDocument();
+    expect(screen.getAllByRole('article')).toHaveLength(3);
   });
 
   it('keeps out-of-stock products visible with a disabled button', async () => {
@@ -176,5 +189,60 @@ describe('ProductListPage', () => {
 
     expect(await screen.findByText('Wireless Headphones')).toBeInTheDocument();
     expect(productCalls()).toHaveLength(2);
+  });
+
+  describe('sorting (SCRUM-81)', () => {
+    it('offers featured, price and popularity orders', async () => {
+      render(<ProductListPage />);
+      await screen.findByText('Wireless Headphones');
+      const options = [...screen.getByLabelText('Sort by').options].map((option) => option.textContent);
+      expect(options).toEqual(['Featured', 'Price: low to high', 'Price: high to low', 'Most popular']);
+      expect(screen.getByLabelText('Sort by')).toHaveValue('');
+    });
+
+    it('sorts by price from low to high', async () => {
+      render(<ProductListPage />);
+      await screen.findByText('Wireless Headphones');
+      fireEvent.change(screen.getByLabelText('Sort by'), { target: { value: 'price_asc' } });
+      await waitFor(() => expect(cardNames()).toEqual(['USB Microphone', 'Wireless Headphones', 'Mechanical Keyboard']));
+      expect(productCalls().at(-1)).toBe('/api/products?sort=price_asc');
+    });
+
+    it('sorts by price from high to low', async () => {
+      render(<ProductListPage />);
+      await screen.findByText('Wireless Headphones');
+      fireEvent.change(screen.getByLabelText('Sort by'), { target: { value: 'price_desc' } });
+      await waitFor(() => expect(cardNames()).toEqual(['Mechanical Keyboard', 'Wireless Headphones', 'USB Microphone']));
+    });
+
+    it('puts the most popular products first', async () => {
+      render(<ProductListPage />);
+      await screen.findByText('Wireless Headphones');
+      fireEvent.change(screen.getByLabelText('Sort by'), { target: { value: 'popularity' } });
+      await waitFor(() => expect(cardNames()).toEqual(['USB Microphone', 'Wireless Headphones', 'Mechanical Keyboard']));
+      expect(productCalls().at(-1)).toBe('/api/products?sort=popularity');
+    });
+
+    it('combines the sort with search and category and restores it from the URL', async () => {
+      render(<ProductListPage />, '/products?q=o&category=1&sort=price_desc');
+      await waitFor(() => expect(cardNames()).toEqual(['Wireless Headphones', 'USB Microphone']));
+      expect(productCalls()).toEqual(['/api/products?q=o&category=1&sort=price_desc']);
+      expect(screen.getByLabelText('Sort by')).toHaveValue('price_desc');
+    });
+
+    it('keeps the chosen sort when the filters are cleared', async () => {
+      render(<ProductListPage />, '/products?category=2&sort=popularity');
+      await screen.findByText('Mechanical Keyboard');
+      fireEvent.click(screen.getByRole('button', { name: 'Clear filters' }));
+      await waitFor(() => expect(cardNames()).toEqual(['USB Microphone', 'Wireless Headphones', 'Mechanical Keyboard']));
+      expect(screen.getByLabelText('Sort by')).toHaveValue('popularity');
+    });
+
+    it('ignores an unknown sort in the URL instead of showing an error', async () => {
+      render(<ProductListPage />, '/products?sort=cheapest');
+      await screen.findByText('Wireless Headphones');
+      expect(productCalls()).toEqual(['/api/products']);
+      expect(screen.getByLabelText('Sort by')).toHaveValue('');
+    });
   });
 });

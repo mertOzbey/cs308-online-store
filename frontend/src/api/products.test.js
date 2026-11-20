@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { buildProductsUrl, fetchCategories, fetchProducts } from './products.js';
+import { SORT_OPTIONS, buildProductsUrl, fetchCategories, fetchProducts, isSortOption } from './products.js';
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -12,6 +12,12 @@ describe('buildProductsUrl', () => {
   it('adds trimmed search text and the category id', () => {
     expect(buildProductsUrl({ q: ' red lipstick ', category: '3' }))
       .toBe('/api/products?q=red+lipstick&category=3');
+  });
+
+  it('adds the sort after the filters', () => {
+    expect(buildProductsUrl({ sort: 'popularity' })).toBe('/api/products?sort=popularity');
+    expect(buildProductsUrl({ q: 'mask', category: '2', sort: 'price_asc' }))
+      .toBe('/api/products?q=mask&category=2&sort=price_asc');
   });
 
   it('encodes special characters in the search text', () => {
@@ -41,5 +47,14 @@ describe('fetchProducts / fetchCategories', () => {
       .mockResolvedValueOnce({ ok: true, json: async () => ({ items: [] }) }));
     await expect(fetchProducts({ category: '1' })).rejects.toThrow(/status 400/);
     await expect(fetchCategories()).rejects.toThrow(/did not return a list/);
+  });
+});
+
+describe('sort options', () => {
+  it('match the values the backend accepts, plus the default order', () => {
+    expect(SORT_OPTIONS.map((option) => option.value)).toEqual(['', 'price_asc', 'price_desc', 'popularity']);
+    expect(isSortOption('price_desc')).toBe(true);
+    expect(isSortOption('')).toBe(true);
+    expect(isSortOption('cheapest')).toBe(false);
   });
 });

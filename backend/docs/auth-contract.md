@@ -28,6 +28,28 @@ Profile authorization is server-side and always tied to the authenticated user.
 | B1 User model | None | None | None | PostgreSQL 17, Prisma 7.10.1; create_users migration |
 | B2 Validated repository | None | B1 | None; consumed by Damla's SCRUM-76/77 | B1 migration; no additional migration |
 | B3 Password helpers | argon2 0.45.2; cookie 2.0.2 installed for B5 | B2 validation policy | None; consumed by Damla | No new migration |
+| B4 Persistent sessions | None; built-in node:crypto | B1/B2 | None; consumed by Damla's SCRUM-77 | create_auth_sessions migration |
+
+## Session handoff
+
+createSessionService(prisma, { ttlSeconds, now }) from src/sessions.js provides:
+- issueSession(userId) -> { token, expiresAt } for a successful authenticated login.
+- resolveSession(token) -> current safe user or null.
+- revokeSession(token) -> boolean; repeated logout is safe.
+- rotateSession(token, userId) -> replacement { token, expiresAt } or null.
+
+Never issue a session merely because an unverified request supplies a user ID:
+the login endpoint must verify credentials first. Raw tokens belong only in the
+HttpOnly cookie, never a JSON response/log or localStorage. Random 256-bit tokens
+are represented by SHA-256 hashes in PostgreSQL. This is appropriate for random
+tokens; passwords require the separate slow Argon2id helper.
+
+Default lifetime is 8 hours; allowed configuration is 60 seconds to 30 days.
+Expiration and revocation are checked on every resolution, alongside the current
+user role. Rotation is transactional and may consume an old session only once,
+only for the same user; insertion failure rolls back the revocation. Other
+devices remain logged in. Deleting the user cascades only their sessions.
+No Redis/JWT package or external service is required.
 
 ## Password handoff
 

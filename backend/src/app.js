@@ -1,5 +1,6 @@
 import express from 'express';
 import { parseCartItems, validateCartStock } from './cartValidation.js';
+import { ProductQueryError, parseProductQuery } from './productQuery.js';
 
 export function createApp(prisma) {
   const app = express();
@@ -9,12 +10,17 @@ export function createApp(prisma) {
     res.json({ message: 'CS308 backend is running' });
   });
 
+  // Optional query parameters: q (keyword) and category (id). See productQuery.js.
   app.get('/api/products', async (req, res) => {
+    let args;
     try {
-      const products = await prisma.product.findMany({
-        include: { category: true },
-        orderBy: { id: 'asc' },
-      });
+      args = parseProductQuery(req.query);
+    } catch (error) {
+      if (error instanceof ProductQueryError) return res.status(400).json({ error: error.message });
+      throw error;
+    }
+    try {
+      const products = await prisma.product.findMany(args);
       res.json(products);
     } catch {
       console.error('Failed to retrieve products.');

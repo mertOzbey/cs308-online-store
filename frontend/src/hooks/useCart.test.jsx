@@ -2,13 +2,17 @@
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { act, cleanup, renderHook } from '@testing-library/react';
 import { useCart } from './useCart.js';
+import { GUEST_CART_STORAGE_KEY } from '../utils/cartStorage.js';
 
 const product = { id: 1, name: 'Lipstick', stockQuantity: 10 };
 function reply(valid, reason = null, availableQuantity = 10) {
   return { ok: true, json: async () => ({ valid, items: [{ productId: 1, availableQuantity, reason }] }) };
 }
-beforeEach(() => vi.stubGlobal('fetch', vi.fn()));
-afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
+beforeEach(() => {
+  localStorage.clear();
+  vi.stubGlobal('fetch', vi.fn());
+});
+afterEach(() => { cleanup(); vi.unstubAllGlobals(); localStorage.clear(); });
 
 it('checks the full proposed cart and accumulates repeat additions only after server approval', async () => {
   fetch.mockResolvedValue(reply(true));
@@ -83,6 +87,26 @@ it('rejects invalid quantities without contacting the server', () => {
   for (const quantity of [0, -1, 1.5, NaN]) act(() => result.current.updateQuantity(1, quantity));
   expect(fetch).not.toHaveBeenCalled();
   expect(result.current.message).toContain('positive whole number');
+});
+
+it('persists an approved cart in localStorage and restores it on remount', async () => {
+  fetch.mockResolvedValue(reply(true));
+  const first = renderHook(() => useCart());
+  await act(() => first.result.current.addItem(product));
+  expect(JSON.parse(localStorage.getItem(GUEST_CART_STORAGE_KEY))[0].quantity).toBe(1);
+  first.unmount();
+  const second = renderHook(() => useCart());
+  expect(second.result.current.count).toBe(1);
+  expect(second.result.current.items[0].product.name).toBe('Lipstick');
+});
+
+it('clears localStorage when the last guest cart item is removed', async () => {
+  fetch.mockResolvedValue(reply(true));
+  const { result } = renderHook(() => useCart());
+  await act(() => result.current.addItem(product));
+  act(() => result.current.removeItem(1));
+  expect(localStorage.getItem(GUEST_CART_STORAGE_KEY)).toBeNull();
+  expect(result.current.count).toBe(0);
 });
 
 it('can fix two shortages one at a time while retaining warnings for the other item', async () => {

@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { afterEach, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import '@testing-library/jest-dom/vitest';
@@ -9,7 +9,8 @@ const product = { id: 1, name: 'Lipstick', model: 'L1', description: 'Red lipsti
   price: '25.00', stockQuantity: 5, category: { id: 1, name: 'Makeup' } };
 const stockReply = (valid, reason = null, availableQuantity = 5) => ({ ok: true,
   json: async () => ({ valid, items: [{ productId: 1, reason, availableQuantity }] }) });
-afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
+beforeEach(() => localStorage.clear());
+afterEach(() => { cleanup(); vi.unstubAllGlobals(); localStorage.clear(); });
 // Catalog requests are answered by URL; the remaining calls (cart stock checks) take `cartReplies` in order.
 function stubApi(...cartReplies) {
   const last = cartReplies.at(-1);

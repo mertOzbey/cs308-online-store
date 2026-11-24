@@ -1,13 +1,13 @@
 # Database setup (SCRUM-69 and SCRUM-70)
 
-## User accounts and authentication (SCRUM-75, SCRUM-78)
+## User accounts and authentication (SCRUM-75 through SCRUM-78)
 
-This branch also adds the User/AuthSession migrations, validated customer
+The backend includes User/AuthSession migrations, a validated customer
 repository, Argon2id password helpers, revocable database sessions, secure cookie
-and origin guards, role/ownership policies, and GET /api/auth/me.
+and origin guards, role/ownership policies, and registration, login, logout,
+and current-account endpoints under /api/auth.
 See [the authentication contract](docs/auth-contract.md) for exact helper
 signatures, field limits, error semantics, team dependencies and delivery order.
-Registration/login/logout HTTP handlers remain SCRUM-76/77 work.
 
 After pulling, run the local setup below with PostgreSQL 17 and separate
 development/test databases. New direct runtime dependencies are pinned:

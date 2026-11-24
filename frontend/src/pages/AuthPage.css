@@ -68,10 +68,10 @@
 .auth-error { margin: 6px 0 0; color: var(--color-danger); font-size: 0.82rem; }
 .auth-submit { display: flex; align-items: center; justify-content: center; gap: 12px; min-height: 51px; margin-top: 3px; border: 1px solid var(--color-burgundy); border-radius: 5px; background: var(--color-burgundy); color: white; font-weight: 600; letter-spacing: 0.035em; transition: background 0.15s ease; }
 .auth-submit:hover { background: var(--color-burgundy-dark); }
+.auth-submit:disabled { opacity: 0.7; cursor: wait; }
 .auth-submit:focus-visible { outline: 3px solid #d69bad; outline-offset: 3px; }
 .auth-switch { margin: 28px 0 14px; text-align: center; color: var(--color-text-muted); font-size: 0.91rem; }
 .auth-switch a { font-weight: 700; text-decoration: underline; text-underline-offset: 2px; }
-.auth-footnote { font-size: 0.76rem; color: var(--color-text-muted); text-align: center; margin: 18px 0 0; }
 .auth-notice { margin: 0; padding: 12px; border: 1px solid var(--color-border); border-radius: 5px; font-size: 0.85rem; color: var(--color-text); background: var(--color-primary-light); }
 @media (max-width: 760px) {
   .auth-layout { grid-template-columns: minmax(0, 1fr); min-height: 0; }

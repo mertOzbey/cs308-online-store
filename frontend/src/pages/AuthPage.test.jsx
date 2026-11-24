@@ -24,19 +24,18 @@ it('prevents empty login submission and shows validation errors', () => {
   expect(screen.getByText('Please enter your password.')).toBeInTheDocument()
 })
 
-it('validates registration password confirmation before a UI-only submit', () => {
+it('rejects registration when the passwords differ', () => {
   const fetchSpy = vi.fn()
   vi.stubGlobal('fetch', fetchSpy)
   renderPage(RegisterPage)
   fireEvent.change(screen.getByLabelText('Full name'), { target: { value: 'Ada Example' } })
   fireEvent.change(screen.getByLabelText('Email address'), { target: { value: 'ada@example.com' } })
-  fireEvent.change(screen.getByLabelText('Password'), { target: { value: '12345678' } })
-  fireEvent.change(screen.getByLabelText('Confirm password'), { target: { value: '12345679' } })
+  fireEvent.change(screen.getByLabelText('Tax ID'), { target: { value: '001' } })
+  fireEvent.change(screen.getByLabelText('Home address'), { target: { value: 'Test street 1' } })
+  fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'Password2026!' } })
+  fireEvent.change(screen.getByLabelText('Confirm password'), { target: { value: 'Password2027!' } })
   fireEvent.click(screen.getByRole('button', { name: /Create account/i }))
   expect(screen.getByText('Passwords do not match.')).toBeInTheDocument()
-  fireEvent.change(screen.getByLabelText('Confirm password'), { target: { value: '12345678' } })
-  fireEvent.click(screen.getByRole('button', { name: /Create account/i }))
-  expect(screen.getByRole('status')).toHaveTextContent('No account has been created.')
   expect(fetchSpy).not.toHaveBeenCalled()
 })
 

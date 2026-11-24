@@ -1,23 +1,22 @@
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { fetchCategories } from '../api/products.js'
 import './Home.css'
 
-const categories = [
-  {
-    name: 'Skincare',
+const categoryDetails = {
+  skincare: {
     description: 'Cleansers, hydration, and daily care for every routine.',
     icon: 'bi-droplet',
   },
-  {
-    name: 'Makeup',
+  makeup: {
     description: 'Considered color and complexion essentials for every look.',
     icon: 'bi-brush',
   },
-  {
-    name: 'Fragrance',
+  fragrance: {
     description: 'Distinctive scents selected for everyday and special moments.',
     icon: 'bi-flower1',
   },
-]
+}
 
 const storeBenefits = [
   {
@@ -31,13 +30,27 @@ const storeBenefits = [
     icon: 'bi-box-seam',
   },
   {
-    title: 'Orders you can follow',
-    description: 'Track each order from processing through delivery.',
-    icon: 'bi-truck',
+    title: 'Find what fits',
+    description: 'Compare products by price and narrow your search by category.',
+    icon: 'bi-search',
   },
 ]
 
 function Home() {
+  const [categories, setCategories] = useState([])
+
+  useEffect(() => {
+    const controller = new AbortController()
+    fetchCategories({ signal: controller.signal })
+      .then((data) => {
+        if (!controller.signal.aborted) setCategories(data)
+      })
+      .catch(() => {
+        // The link to browse all products is available if categories cannot load.
+      })
+    return () => controller.abort()
+  }, [])
+
   return (
     <div className="home-page">
       <section className="home-hero" aria-labelledby="home-heading">
@@ -78,39 +91,41 @@ function Home() {
         </div>
       </section>
 
-      <section className="home-section" aria-labelledby="categories-heading">
-        <div className="home-section__intro">
-          <p className="home-section__eyebrow">Find your ritual</p>
-          <h2 id="categories-heading">Shop by category</h2>
-          <p>
-            Start with the collection that fits your routine, then explore the
-            full product details and current availability.
-          </p>
-        </div>
+      {categories.length > 0 && (
+        <section className="home-section" aria-labelledby="categories-heading">
+          <div className="home-section__intro">
+            <p className="home-section__eyebrow">Find your ritual</p>
+            <h2 id="categories-heading">Shop by category</h2>
+            <p>Explore products and check their current availability.</p>
+          </div>
 
-        <div className="home-category-grid">
-          {categories.map((category) => (
-            <Link
-              className="home-category-card"
-              to="/products"
-              key={category.name}
-              aria-label={`Explore ${category.name} products`}
-            >
-              <span className="home-category-card__icon" aria-hidden="true">
-                <i className={`bi ${category.icon}`} />
-              </span>
-              <span className="home-category-card__content">
-                <strong>{category.name}</strong>
-                <span>{category.description}</span>
-              </span>
-              <i
-                className="bi bi-arrow-up-right home-category-card__arrow"
-                aria-hidden="true"
-              />
-            </Link>
-          ))}
-        </div>
-      </section>
+          <div className="home-category-grid">
+            {categories.map(({ id, name }) => {
+              const details = categoryDetails[name.toLowerCase()]
+              return (
+                <Link
+                  className="home-category-card"
+                  to={`/products?${new URLSearchParams({ category: String(id) })}`}
+                  key={id}
+                  aria-label={`Explore ${name} products`}
+                >
+                  <span className="home-category-card__icon" aria-hidden="true">
+                    <i className={`bi ${details?.icon ?? 'bi-grid'}`} />
+                  </span>
+                  <span className="home-category-card__content">
+                    <strong>{name}</strong>
+                    {details?.description && <span>{details.description}</span>}
+                  </span>
+                  <i
+                    className="bi bi-arrow-up-right home-category-card__arrow"
+                    aria-hidden="true"
+                  />
+                </Link>
+              )
+            })}
+          </div>
+        </section>
+      )}
 
       <section className="home-benefits" aria-labelledby="benefits-heading">
         <div className="home-benefits__heading">

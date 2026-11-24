@@ -1,11 +1,26 @@
 import { useState } from 'react'
 import { Link, NavLink, useNavigate } from 'react-router-dom'
 
-function Navbar({ cartItemCount = 0 }) {
+function Navbar({ cartItemCount = 0, account, onSignOut }) {
   const [isOpen, setIsOpen] = useState(false)
+  const [signingOut, setSigningOut] = useState(false)
+  const [signOutError, setSignOutError] = useState('')
   const navigate = useNavigate()
 
   const closeMenu = () => setIsOpen(false)
+
+  async function handleSignOut() {
+    setSigningOut(true)
+    setSignOutError('')
+    try {
+      await onSignOut()
+      closeMenu()
+    } catch (error) {
+      setSignOutError(error.message)
+    } finally {
+      setSigningOut(false)
+    }
+  }
 
   return (
     <nav
@@ -137,13 +152,20 @@ function Navbar({ cartItemCount = 0 }) {
               )}
             </Link>
 
-            <Link
-              to="/login"
-              className="btn btn-sm btn-primary px-3"
-              onClick={closeMenu}
-            >
-              Login
-            </Link>
+            {account ? (
+              <div>
+                <span className="small me-2">{account.name}</span>
+                <button type="button" className="btn btn-sm btn-primary px-3"
+                  onClick={handleSignOut} disabled={signingOut}>
+                  {signingOut ? 'Signing out…' : 'Sign out'}
+                </button>
+                {signOutError && <p className="text-danger small mb-0" role="alert">{signOutError}</p>}
+              </div>
+            ) : (
+              <Link to="/login" className="btn btn-sm btn-primary px-3" onClick={closeMenu}>
+                Login
+              </Link>
+            )}
           </div>
         </div>
       </div>

@@ -1,6 +1,8 @@
 import express from 'express';
 import { parseCartItems, validateCartStock } from './cartValidation.js';
 import { ProductQueryError, parseProductQuery } from './productQuery.js';
+import { readAuthConfig } from './authConfig.js';
+import { createAuthRouter } from './authRoutes.js';
 
 export function createApp(prisma, { authConfig = readAuthConfig() } = {}) {
   const app = express();

@@ -1,7 +1,7 @@
-# User and authentication contract (SCRUM-75, SCRUM-78)
+# User and authentication contract (SCRUM-75 through SCRUM-78)
 
-This branch provides the account and authentication foundation. Registration,
-login and logout HTTP endpoints belong to SCRUM-76/77; their delivery is separate.
+The account and authentication foundation provides HTTP endpoints for registration,
+login and logout.
 Product search/sort (SCRUM-79/81) and the guest cart remain public.
 
 ## User data
@@ -51,31 +51,18 @@ revoked cookies return 401. Storage errors return generic 503. Responses are
 Cache-Control: no-store and Vary: Cookie. Another user's ID in the query string
 never switches the returned account. No taxId, passwordHash or token is exposed.
 
-The real application does **not** yet ship registration/login/logout endpoints:
-Damla owns SCRUM-76/77. authIntegration.test.js mounts clearly test-only
-/__test__/ routes to verify how the shared helpers compose. These routes do not
-exist in createApp. This verifies the contract, not Damla's unreleased HTTP code.
+The auth router also serves the following endpoints with an exact-origin guard:
 
-### Damla's integration order
+- POST /api/auth/register accepts the registration fields above and returns 201
+  with the created customer. Invalid input returns 400 and duplicate email 409.
+- POST /api/auth/login accepts email and password, returns the safe account,
+  and sets the session cookie. Invalid credentials return a generic 401.
+- POST /api/auth/logout revokes the cookie's session and clears the cookie
+  with a 204 response. Repeated logout is safe.
 
-1. Pull the feature branch and run npm ci, db:generate, db:validate, db:deploy.
-2. Import validateRegistrationInput/createUserRepository from users.js and
-   hashPassword/verifyPassword from passwords.js.
-3. Registration: requireTrustedOrigin, validate body, hash password, then
-   createCustomer(profile, hash). Map input/conflict errors to 400/409 and
-   infrastructure errors to a generic 503. Do not echo request passwords.
-4. Login: requireTrustedOrigin, look up canonical email credentials, verify
-   the password, then issueSession only for that verified user's ID and set the
-   session cookie. Use a generic invalid-credentials response; rate-limit the
-   login endpoint before deployment. Do not return the raw token in JSON.
-5. Logout: requireTrustedOrigin, read the validated cookie, revoke the
-   corresponding session and clear the cookie. Handle missing/revoked tokens
-   idempotently; malformed cookies must not become authenticated requests.
-6. Existing authenticated-session refresh may call rotateSession(token, userId);
-   a null result means the old session is unusable, not a new successful login.
-7. Preserve the guest cart in frontend state/storage across authentication.
-   Mount the real auth handlers in an additional /api/auth router; /me is
-   already provided here. Then verify the complete released browser flow.
+Serve the frontend and /api through the same origin. The frontend keeps the
+guest cart in local storage across registration, login, and logout. The
+/__test__/ contract harness stays in authIntegration.test.js.
 
 ### Huseyin's integration order
 
@@ -100,8 +87,8 @@ SCRUM-75 covers required user fields, roles, canonical/unique email, safe user
 repository, validation and migrations. SCRUM-78 covers Argon2id, persistent
 revocable sessions, secure cookies, CSRF origin guards, authentication, role and
 ownership guards, and a protected current-account endpoint.
-SCRUM-12 registration/login UI/API and SCRUM-15 profile UI are not complete just
-because this foundation exists. Future order/payment handlers must explicitly
+The registration/login forms call the auth endpoints. SCRUM-15 profile UI is
+separate. Future order/payment handlers must explicitly
 require authentication; future management routes must explicitly add role/
 resource policies. Invoice/card storage, live support, checkout, wishlist and
 refund implementations are outside this branch.
@@ -154,9 +141,8 @@ Secure. Set/clear helpers use the same scope. Session cookies expire with the
 underlying session; raw tokens are not sent in JSON. Auth responses are no-store.
 Storage outages return generic 503, never an authenticated or silently anonymous user.
 
-requireAuth checks Origin on unsafe authenticated requests. For public auth
-POSTs (registration/login), Damla must explicitly mount requireTrustedOrigin
-before the handler, since callers do not have a session yet. Missing/null/
+requireAuth checks Origin on unsafe authenticated requests. The auth POST routes
+mount requireTrustedOrigin before their handlers. Missing/null/
 untrusted Origin is rejected with 403, including CLI calls without an Origin.
 SameSite cookies alone are not the CSRF protection. Do not configure credentialed
 wildcard CORS, infer trusted origins from the Host header or put tokens in URLs.

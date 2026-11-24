@@ -1,0 +1,148 @@
+{
+  "version": 1,
+  "method": "POST",
+  "path": "/api/checkout",
+  "cases": {
+    "approved": {
+      "request": {
+        "idempotencyKey": "c2b94c79-8a21-4f27-b317-c3e3e85c2000",
+        "items": [
+          {
+            "productId": 101,
+            "quantity": 2
+          },
+          {
+            "productId": 202,
+            "quantity": 1
+          }
+        ],
+        "paymentToken": "mock_approve"
+      },
+      "response": {
+        "status": 201,
+        "body": {
+          "payment": {
+            "status": "approved",
+            "reference": "mock-pay-7001"
+          },
+          "order": {
+            "orderId": 7001,
+            "customerId": 42,
+            "purchasedAt": "2026-11-25T12:00:00Z",
+            "status": "processing",
+            "currency": "TRY",
+            "items": [
+              {
+                "productId": 101,
+                "name": "Desk lamp",
+                "quantity": 2,
+                "unitPrice": "125.50",
+                "lineTotal": "251.00"
+              },
+              {
+                "productId": 202,
+                "name": "Notebook",
+                "quantity": 1,
+                "unitPrice": "39.90",
+                "lineTotal": "39.90"
+              }
+            ],
+            "total": "290.90",
+            "invoiceNumber": "INV-7001"
+          }
+        }
+      }
+    },
+    "unauthenticated": {
+      "request": {
+        "idempotencyKey": "c2b94c79-8a21-4f27-b317-c3e3e85c2001",
+        "items": [
+          {
+            "productId": 101,
+            "quantity": 2
+          },
+          {
+            "productId": 202,
+            "quantity": 1
+          }
+        ],
+        "paymentToken": "mock_approve"
+      },
+      "response": {
+        "status": 401,
+        "body": {
+          "error": "Authentication required."
+        }
+      }
+    },
+    "declined": {
+      "request": {
+        "idempotencyKey": "c2b94c79-8a21-4f27-b317-c3e3e85c2002",
+        "items": [
+          {
+            "productId": 101,
+            "quantity": 2
+          },
+          {
+            "productId": 202,
+            "quantity": 1
+          }
+        ],
+        "paymentToken": "mock_decline"
+      },
+      "response": {
+        "status": 402,
+        "body": {
+          "code": "PAYMENT_DECLINED",
+          "error": "The mock bank declined the payment."
+        }
+      }
+    },
+    "stockConflict": {
+      "request": {
+        "idempotencyKey": "c2b94c79-8a21-4f27-b317-c3e3e85c2003",
+        "items": [
+          {
+            "productId": 101,
+            "quantity": 2
+          },
+          {
+            "productId": 202,
+            "quantity": 1
+          }
+        ],
+        "paymentToken": "mock_approve"
+      },
+      "response": {
+        "status": 409,
+        "body": {
+          "code": "STOCK_CONFLICT",
+          "error": "Some items are no longer available in the requested quantity.",
+          "items": [
+            {
+              "productId": 101,
+              "requestedQuantity": 2,
+              "availableQuantity": 1,
+              "reason": "INSUFFICIENT_STOCK"
+            }
+          ]
+        }
+      }
+    }
+  },
+  "invoiceCustomer": {
+    "name": "Demo Customer",
+    "email": "customer@example.test",
+    "deliveryAddress": "10 Demo Street"
+  },
+  "delivery": {
+    "request": {
+      "status": "in-transit"
+    },
+    "response": {
+      "orderId": 7001,
+      "status": "in-transit",
+      "updatedAt": "2026-11-26T09:00:00Z"
+    }
+  }
+}

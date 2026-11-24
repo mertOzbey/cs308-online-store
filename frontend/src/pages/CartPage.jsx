@@ -25,7 +25,7 @@ export default function CartPage({ cart }) {
   return (
     <section aria-busy={cart.busy}>
       <h1>Cart</h1>
-      <p>Your cart is kept while this page is open. Availability is checked with the store when you add or change items.</p>
+      <p>Your guest cart is saved in this browser (local storage). Availability is checked with the store when you add or change items.</p>
       {cart.message && <p role="status">{cart.message}</p>}
       {cart.items.length === 0 ? <p>Your cart is empty. <Link to="/products">Browse products</Link></p> : (
         <>

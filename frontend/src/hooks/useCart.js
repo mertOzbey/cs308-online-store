@@ -1,5 +1,6 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { validateCart } from '../api/cart.js';
+import { loadGuestCart, saveGuestCart } from '../utils/cartStorage.js';
 
 function stockMessage(result, items) {
   return result.items.filter((item) => item.reason).map((item) => {
@@ -11,11 +12,15 @@ function stockMessage(result, items) {
 }
 
 export function useCart() {
-  const [items, setItems] = useState([]);
+  const [items, setItems] = useState(() => loadGuestCart());
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
   // The ref also blocks a second event before React renders the disabled controls.
   const pending = useRef(false);
+
+  useEffect(() => {
+    saveGuestCart(items);
+  }, [items]);
 
   async function check(proposedItems, successMessage, save = false, correctionProductId = null) {
     if (pending.current) return false;

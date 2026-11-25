@@ -27,6 +27,7 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
   sessions     AuthSession[]
+  orders       Order[]
 }
 
 model AuthSession {
@@ -67,5 +68,47 @@ model Product {
   createdAt              DateTime @default(now())
   updatedAt              DateTime @updatedAt
 
+  orderItems OrderItem[]
+
   @@index([categoryId])
+}
+
+enum OrderStatus {
+  processing
+  in_transit @map("in-transit")
+  delivered
+}
+
+model Order {
+  id              Int         @id @default(autoincrement())
+  customerId      Int
+  customer        User        @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  idempotencyKey  String      @db.Uuid
+  invoiceNumber   String      @unique
+  customerName    String      @db.VarChar(200)
+  customerEmail   String      @db.VarChar(254)
+  deliveryAddress String      @db.VarChar(1000)
+  purchasedAt     DateTime    @default(now()) @db.Timestamptz(3)
+  updatedAt       DateTime    @updatedAt @db.Timestamptz(3)
+  status          OrderStatus @default(processing)
+  currency        String      @default("TRY") @db.VarChar(3)
+  total           Decimal     @db.Decimal(24, 2)
+  items           OrderItem[]
+
+  @@unique([customerId, idempotencyKey])
+  @@index([customerId, purchasedAt(sort: Desc), id(sort: Desc)])
+}
+
+model OrderItem {
+  orderId   Int
+  order     Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId Int
+  product   Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+  name      String
+  quantity  Int
+  unitPrice Decimal @db.Decimal(12, 2)
+  lineTotal Decimal @db.Decimal(24, 2)
+
+  @@id([orderId, productId])
+  @@index([productId])
 }

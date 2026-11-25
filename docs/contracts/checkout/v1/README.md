@@ -34,3 +34,11 @@ Domain errors use `{code, error}` with a stable machine code and a display messa
 The live Express app mounts /api/auth, catalog routes and POST /api/cart/validate. Cart validation permits guests and an empty cart, returns HTTP 200 with valid=false for shortages, and does not reserve stock. The session middleware supplies req.user; authentication failures have no JSON code field. React restores the session via /api/auth/me, retains its local cart and sends signed-in customers with items to /cart. Catalog price is Prisma Decimal(12,2); checkout serialization explicitly pads trailing zeros.
 
 Checkout, orders, invoices, the mock bank and delivery updates are planned interfaces. No checkout route or persistent order model exists on this baseline. The fixtures define their wire format for subsequent tickets; they are not evidence of a live purchase. The contract test checks the real cart and authentication HTTP routes and the arithmetic and references in the approved example.
+
+## Order storage (SCRUM-87)
+
+Order.id supplies orderId. Copy User.name, email and homeAddress into customerName, customerEmail and deliveryAddress when confirming the purchase. Each OrderItem keeps its own product name and unitPrice. Calculate lineTotal from quantity × catalog price and Order.total from the sum of the lines in the same checkout transaction. Serialize decimals with two fractional digits. Prisma's in_transit enum member maps to the PostgreSQL and HTTP value `in-transit`.
+
+For customer history, filter by customerId and sort by purchasedAt descending, then id descending. The composite history index follows that order. OrderItem's (orderId, productId) primary key groups the lines of an order and admits one line per aggregated product. Its productId index supports lookups from a product.
+
+The (customerId, idempotencyKey) unique constraint prevents duplicate confirmed orders for one customer's attempt. Replaying terminal payment responses, validating reuse against the normalized request and handling declined attempts belong to the checkout service. No payment token is stored on the order.

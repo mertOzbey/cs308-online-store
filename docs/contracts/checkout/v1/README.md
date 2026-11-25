@@ -42,3 +42,27 @@ Order.id supplies orderId. Copy User.name, email and homeAddress into customerNa
 For customer history, filter by customerId and sort by purchasedAt descending, then id descending. The composite history index follows that order. OrderItem's (orderId, productId) primary key groups the lines of an order and admits one line per aggregated product. Its productId index supports lookups from a product.
 
 The (customerId, idempotencyKey) unique constraint prevents duplicate confirmed orders for one customer's attempt. Replaying terminal payment responses, validating reuse against the normalized request and handling declined attempts belong to the checkout service. No payment token is stored on the order.
+
+## Mock bank boundary (SCRUM-88)
+
+The v1 HTTP contract remains token-based: clients send `mock_approve` or
+`mock_decline`, never card fields or an amount. The server-side mock payment
+service resolves those tokens to deliberately synthetic, in-process test cards,
+loads current prices from the catalog and calculates the TRY total in kuruş.
+It rejects any client-supplied `amount` field.
+
+The isolated bank adapter validates its synthetic card fields and returns both
+approved and declined results with a deterministic `mock-pay-*` transaction
+reference. It scopes attempt keys by customer and replays the first result for
+an identical retry without creating a second payment. Its in-memory attempt
+record contains only the amount, currency, decision and a SHA-256 digest of the
+normalized item/token request; card numbers, security codes and cardholder data
+are neither stored nor logged. A changed request under the same key raises
+`IDEMPOTENCY_KEY_REUSED`.
+
+This differs from a direct card-form API intentionally: SCRUM-86 defines
+`paymentToken` as the public field, while card-shaped values exist only behind
+the mock adapter boundary. The current main branch still does not mount
+`POST /api/checkout`; SCRUM-92 will compose this service with authentication,
+stock mutation and order persistence. The contract test imports the real token
+resolver so fixture drift is detected before that integration.

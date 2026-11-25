@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises';
 import { test } from 'node:test';
 import { once } from 'node:events';
 import { createApp } from '../src/app.js';
+import { getSyntheticTestCard } from '../src/mockBankAdapter.js';
 
 const fixture = JSON.parse(await readFile(
   new URL('../../docs/contracts/checkout/v1/examples.json', import.meta.url), 'utf8',
@@ -28,6 +29,11 @@ test('shared checkout cases use distinct attempts on the same two-product cart',
   assert.equal(declined.response.body.code, 'PAYMENT_DECLINED');
   assert.equal(stockConflict.response.status, 409);
   assert.equal(stockConflict.response.body.code, 'STOCK_CONFLICT');
+});
+
+test('the live mock adapter accepts the payment tokens from the v1 contract', () => {
+  assert.match(getSyntheticTestCard(approved.request.paymentToken).cardNumber, /^\d{16}$/);
+  assert.match(getSyntheticTestCard(declined.request.paymentToken).cardNumber, /^\d{16}$/);
 });
 
 test('the purchase snapshot reconciles in kuruş and identifies the delivery', () => {

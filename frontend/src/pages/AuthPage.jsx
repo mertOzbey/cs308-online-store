@@ -177,7 +177,11 @@ function AuthPage({ mode, onLogin, returnTo }) {
 }
 
 export function LoginPage({ onLogin, returnTo = '/products' }) {
-  return <AuthPage mode="login" onLogin={onLogin} returnTo={returnTo} />
+  const { state } = useLocation()
+  const destination = typeof state?.returnTo === 'string' && state.returnTo.startsWith('/')
+    ? state.returnTo
+    : returnTo
+  return <AuthPage mode="login" onLogin={onLogin} returnTo={destination} />
 }
 
 export function RegisterPage() {

@@ -21,7 +21,9 @@ function QuantityEditor({ product, quantity, cart }) {
   );
 }
 
-export default function CartPage({ cart }) {
+export default function CartPage({ cart, account }) {
+  const signedIn = Boolean(account);
+
   return (
     <section aria-busy={cart.busy}>
       <h1>Cart</h1>
@@ -39,7 +41,22 @@ export default function CartPage({ cart }) {
               </li>
             ))}
           </ul>
-          <button type="button" className="btn btn-primary" onClick={cart.checkStock} disabled={cart.busy}>Check stock availability</button>
+          <div className="d-flex flex-wrap gap-2">
+            <button type="button" className="btn btn-outline-primary" onClick={cart.checkStock} disabled={cart.busy}>
+              Check stock availability
+            </button>
+            {signedIn ? (
+              <Link className="btn btn-primary" to="/checkout">Proceed to checkout</Link>
+            ) : (
+              <Link
+                className="btn btn-primary"
+                to="/login"
+                state={{ returnTo: '/checkout' }}
+              >
+                Sign in to checkout
+              </Link>
+            )}
+          </div>
         </>
       )}
     </section>

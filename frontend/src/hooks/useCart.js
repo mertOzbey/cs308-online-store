@@ -73,7 +73,13 @@ export function useCart() {
     setMessage('Item removed. Check stock again after changing your cart.');
   }
 
-  return { items, busy, message, addItem, updateQuantity, removeItem,
+  function clearCart() {
+    if (pending.current) return;
+    setItems([]);
+    setMessage('Cart cleared after a successful order.');
+  }
+
+  return { items, busy, message, addItem, updateQuantity, removeItem, clearCart,
     checkStock: () => check(items, 'All cart items are currently in stock. Stock is not reserved.'),
     count: items.reduce((total, item) => total + item.quantity, 0) };
 }

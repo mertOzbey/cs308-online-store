@@ -109,6 +109,16 @@ it('clears localStorage when the last guest cart item is removed', async () => {
   expect(result.current.count).toBe(0);
 });
 
+it('clears the guest cart after a confirmed order without calling the stock API', async () => {
+  fetch.mockResolvedValue(reply(true));
+  const { result } = renderHook(() => useCart());
+  await act(() => result.current.addItem(product));
+  act(() => result.current.clearCart());
+  expect(result.current.count).toBe(0);
+  expect(localStorage.getItem(GUEST_CART_STORAGE_KEY)).toBeNull();
+  expect(result.current.message).toContain('successful order');
+});
+
 it('can fix two shortages one at a time while retaining warnings for the other item', async () => {
   let available = 5;
   fetch.mockImplementation(async (_url, options) => {

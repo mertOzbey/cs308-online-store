@@ -1,4 +1,4 @@
-/** SCRUM-91 client for POST /api/checkout. Live route lands with SCRUM-92. */
+/** Send the SCRUM-91 checkout payload to the authenticated SCRUM-92 route. */
 export async function submitCheckout(payload) {
   let response
   try {

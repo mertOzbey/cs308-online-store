@@ -3,6 +3,7 @@ import { parseCartItems } from './cartValidation.js';
 import { getSyntheticTestCard } from './mockBankAdapter.js';
 
 const CHECKOUT_FIELDS = ['idempotencyKey', 'items', 'paymentToken'];
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 export class MockPaymentRequestError extends Error {
   constructor(message) {
@@ -26,7 +27,7 @@ function formatAmount(minorUnits) {
   return `${text.slice(0, -2)}.${text.slice(-2)}`;
 }
 
-function normalizeCheckoutRequest(request) {
+export function normalizeCheckoutRequest(request) {
   if (!request || typeof request !== 'object' || Array.isArray(request)) {
     throw new MockPaymentRequestError('Checkout details are required.');
   }
@@ -42,9 +43,12 @@ function normalizeCheckoutRequest(request) {
     throw new MockPaymentRequestError(error.message);
   }
   if (items.length === 0) throw new MockPaymentRequestError('Checkout requires at least one item.');
+  if (typeof request.idempotencyKey !== 'string' || !UUID_PATTERN.test(request.idempotencyKey)) {
+    throw new MockPaymentRequestError('idempotencyKey must be a UUID.');
+  }
   return {
     idempotencyKey: request.idempotencyKey,
-    items,
+    items: items.sort((a, b) => a.productId - b.productId),
     paymentToken: request.paymentToken,
   };
 }

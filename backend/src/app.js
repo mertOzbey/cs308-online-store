@@ -3,11 +3,13 @@ import { parseCartItems, validateCartStock } from './cartValidation.js';
 import { ProductQueryError, parseProductQuery } from './productQuery.js';
 import { readAuthConfig } from './authConfig.js';
 import { createAuthRouter } from './authRoutes.js';
+import { createCheckoutRouter } from './checkoutRoutes.js';
 
 export function createApp(prisma, { authConfig = readAuthConfig() } = {}) {
   const app = express();
   app.use(express.json({ limit: '16kb' }));
   app.use('/api/auth', createAuthRouter(prisma, authConfig));
+  app.use('/api/checkout', createCheckoutRouter(prisma, authConfig));
 
   app.get('/', (req, res) => {
     res.json({ message: 'CS308 backend is running' });

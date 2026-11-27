@@ -62,16 +62,38 @@ are neither stored nor logged. A changed request under the same key raises
 
 This differs from a direct card-form API intentionally: SCRUM-86 defines
 `paymentToken` as the public field, while card-shaped values exist only behind
-the mock adapter boundary. The current main branch still does not mount
-`POST /api/checkout`; SCRUM-92 will compose this service with authentication,
-stock mutation and order persistence. The contract test imports the real token
-resolver so fixture drift is detected before that integration.
+the mock adapter boundary. SCRUM-92 composes this service with authentication,
+stock mutation and order persistence at `POST /api/checkout`. The contract
+test imports the real token resolver so fixture drift is detected.
 
 ## Approved order service (SCRUM-90)
 
 Pass the result of the SCRUM-88 payment service directly to `confirmApprovedOrder(db, { customerId, idempotencyKey, ...authorization })` from `backend/src/approvedOrder.js`. Here `authorization` comes from the server's `service.authorize(customerId, request)` and supplies `payment`, `quote` and normalized `items`. Use the authenticated session customer ID. A decline raises `PAYMENT_DECLINED` before any database write. The transaction captures the current catalog and invoice customer data, checks that the total still matches the approval and returns the persisted Prisma order with its items in product ID order. Send checkout success only after this call resolves. Serialize the purchase snapshot according to the fixtures above.
 
 A stock conflict carries `code` and `items`. Changed cart contents on an existing confirmed key produce `IDEMPOTENCY_KEY_REUSED`. The checkout route and mock bank own payment-token matching, bank references and replay of terminal HTTP responses. The order service can retry a database transaction without repeating a bank call.
+
+## Live checkout route (SCRUM-92)
+
+`POST /api/checkout` authenticates and checks the configured application
+origin before parsing the checkout body. The route always uses `req.user.id`;
+the public body accepts only `items`, `paymentToken` and `idempotencyKey`.
+It normalizes duplicate items, loads catalog prices on the server, authorizes
+the in-process mock bank and passes that exact authorization to
+`confirmApprovedOrder`. The response serializes the persisted purchase
+snapshot rather than any client-side product name or price.
+
+Identical requests for one customer and idempotency key share one in-flight or
+terminal response. A changed normalized cart or payment token for that key
+returns `IDEMPOTENCY_KEY_REUSED`. Declines and stock conflicts never create an
+order or mutate inventory; approval is returned only after the atomic order
+transaction commits.
+
+The dependency schema has no PaymentAttempt table: only approved attempts are
+durable through the unique `Order(customerId, idempotencyKey)` constraint.
+Mock-bank and non-order terminal response replay is therefore process-local,
+matching the existing in-memory SCRUM-88 adapter. A multi-process or
+restart-durable payment integration would require a persisted attempt/result
+record; SCRUM-92 does not add that unapproved schema change.
 
 ## Shared invoice data and PDF (SCRUM-93)
 

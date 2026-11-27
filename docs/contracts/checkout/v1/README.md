@@ -72,3 +72,26 @@ resolver so fixture drift is detected before that integration.
 Pass the result of the SCRUM-88 payment service directly to `confirmApprovedOrder(db, { customerId, idempotencyKey, ...authorization })` from `backend/src/approvedOrder.js`. Here `authorization` comes from the server's `service.authorize(customerId, request)` and supplies `payment`, `quote` and normalized `items`. Use the authenticated session customer ID. A decline raises `PAYMENT_DECLINED` before any database write. The transaction captures the current catalog and invoice customer data, checks that the total still matches the approval and returns the persisted Prisma order with its items in product ID order. Send checkout success only after this call resolves. Serialize the purchase snapshot according to the fixtures above.
 
 A stock conflict carries `code` and `items`. Changed cart contents on an existing confirmed key produce `IDEMPOTENCY_KEY_REUSED`. The checkout route and mock bank own payment-token matching, bank references and replay of terminal HTTP responses. The order service can retry a database transaction without repeating a bank call.
+
+## Shared invoice data and PDF (SCRUM-93)
+
+`createInvoiceData(order)` is the only presentation transformer for invoices.
+It maps the persisted Order and OrderItem purchase snapshots to the shared
+screen/PDF shape: invoice and order identifiers, purchase time, currency,
+customer name/email/delivery address, item names, quantities, unit prices,
+line totals and the order total. `loadInvoiceData` scopes the read to both the
+authenticated customer and order ID; it never reads the current Product row.
+
+The dependency schema differs from a design with a separate Invoice table:
+SCRUM-87 already stores a unique, stable `Order.invoiceNumber`, the customer
+snapshot and every item price, while SCRUM-90 assigns the number when it first
+claims the order. SCRUM-93 therefore reuses those fields and adds no duplicate
+invoice record or number generator. Values are normalized with exact base-10,
+half-up rounding to two fractional digits before either representation sees
+them. The PDF renderer consumes that normalized object directly and embeds the
+Noto Sans Latin Extended font for Turkish characters.
+
+No HTTP route is mounted by this ticket. SCRUM-95 can return the object from
+`loadInvoiceData` for the on-screen invoice and use `loadInvoiceDocuments` for
+the PDF response, guaranteeing the two endpoints consume the same fields and
+rounding result.

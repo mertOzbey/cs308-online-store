@@ -28,6 +28,8 @@ model User {
   updatedAt    DateTime @updatedAt
   sessions     AuthSession[]
   orders       Order[]
+  ratings      Rating[]
+  comments     Comment[]
 }
 
 model AuthSession {
@@ -69,6 +71,8 @@ model Product {
   updatedAt              DateTime @updatedAt
 
   orderItems OrderItem[]
+  ratings    Rating[]
+  comments   Comment[]
 
   @@index([categoryId])
 }
@@ -111,4 +115,40 @@ model OrderItem {
 
   @@id([orderId, productId])
   @@index([productId])
+}
+
+enum CommentStatus {
+  pending
+  approved
+  rejected
+}
+
+model Rating {
+  id         Int      @id @default(autoincrement())
+  customerId Int
+  productId  Int
+  /// The database enforces the inclusive range 1–5.
+  value      Int
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  customer   User     @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  product    Product  @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  @@unique([customerId, productId])
+  @@index([productId])
+}
+
+model Comment {
+  id         Int           @id @default(autoincrement())
+  customerId Int
+  productId  Int
+  text       String
+  status     CommentStatus @default(pending)
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+  customer   User          @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  product    Product       @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  @@index([productId, status])
+  @@index([status, createdAt])
 }
